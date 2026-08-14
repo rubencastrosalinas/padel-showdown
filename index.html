@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07090F">
-<title>PÁDEL SHOWDOWN · Torneo 4 equipos</title>
+<title>PÁDEL SHOWDOWN · Cuadrangular 16 de agosto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@600;700&family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
@@ -171,7 +171,7 @@
 <canvas id="confetti"></canvas>
 
 <header>
-  <div class="kick">4 equipos · 8 partidos · 1 corona</div>
+  <div class="kick">Domingo 16 de agosto · 4 equipos · 8 partidos · 1 corona</div>
   <h1>Pádel Showdown</h1>
   <div class="sub">Todos contra todos · 2 canchas · <b>9:00 → 10:30</b></div>
 </header>
@@ -218,7 +218,7 @@
 </div>
 
 <script>
-const TEAMS = ["Sonru – Gordo","Lalo – Faco","Mario – Niga","Boris – Hugo"];
+const TEAMS = ["Faco – Negro","Sonru – Cristian","Gordo – Mario","Lalo – Pancho"];
 
 const GROUP = [
   {id:"g1", slot:"9:00", court:"Cancha 1", a:0, b:2},
@@ -233,7 +233,7 @@ const FINALS = [
   {id:"f2", slot:"3ER PUESTO", court:"Cancha 2", posA:2, posB:3},
 ];
 
-const KEY = "padelShowdown.v1";
+const KEY = "padelShowdown.2026-08-16";
 let S = (()=>{ try{ return JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ return {}; } })();
 const save = ()=>{ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} };
 const rec  = id => (S[id] = S[id] || {a:"", b:"", tb:null});
