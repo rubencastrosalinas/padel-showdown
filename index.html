@@ -162,6 +162,23 @@
     border-radius:16px;border:1px solid var(--line);
     background:linear-gradient(150deg,var(--card),var(--card2))}
   .rules b{color:var(--lime);letter-spacing:.6px}
+  /* ---------- HISTORIAL ---------- */
+  .hist{border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px;
+    background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
+  .hbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:12px 16px;background:#0A1120;border-bottom:1px solid var(--line)}
+  .hdate{font-family:var(--head);font-size:14px;letter-spacing:2px;color:var(--cyan)}
+  .hchamp{font-family:var(--cond);font-size:18px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.5px;color:var(--gold)}
+  .hist table td{padding:9px 4px;font-size:13.5px}
+  .hist table td.team{font-size:16px}
+  .hist table td.pts{font-size:16px}
+  .hmatches{padding:11px 16px;border-top:1px solid rgba(36,51,73,.5);
+    font-family:var(--cond);font-size:15px;line-height:1.7;color:#8FA1B8}
+  .hmatches b{color:#C4D3E7;font-weight:700}
+  .hempty{font-family:var(--cond);font-size:16px;line-height:1.7;color:#8FA1B8;padding:16px 18px;
+    border-radius:16px;border:1px dashed var(--line);
+    background:linear-gradient(150deg,var(--card),var(--card2))}
   footer{text-align:center;margin-top:26px}
   #confetti{position:fixed;inset:0;pointer-events:none;z-index:99}
   @media(max-width:400px){.tname{font-size:19px} td.team{font-size:17px} .row{grid-template-columns:1fr 58px}}
@@ -206,6 +223,9 @@
   <h2>Podio</h2>
   <div class="podium" id="podium"></div>
 
+  <h2>Fechas anteriores <span>· guardadas en este dispositivo</span></h2>
+  <div id="history"></div>
+
   <h2>Reglamento</h2>
   <div class="rules">
     <b>DURACIÓN</b> · 20 minutos o 5 games, lo que ocurra primero.<br>
@@ -235,12 +255,26 @@ const FINALS = [
 ];
 
 const KEY = "padelShowdown.2026-08-23";
-let S = (()=>{ try{ return JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ return {}; } })();
-const save = ()=>{ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} };
+
+/* Registro de fechas jugadas. Los resultados viejos se guardaron sin los nombres,
+   así que los equipos de cada fecha quedan anotados acá. */
+const EDITIONS = [
+  {key:"padelShowdown.2026-08-23", label:"Domingo 23 de agosto",
+   teams:["Sonru – Negro","Lalo – Cristian","Nano – Boris","Mario – Gordo"]},
+  {key:"padelShowdown.2026-08-16", label:"Domingo 16 de agosto",
+   teams:["Faco – Negro","Sonru – Cristian","Gordo – Mario","Lalo – Pancho"]},
+  {key:"padelShowdown.v1", label:"Primera fecha",
+   teams:["Sonru – Gordo","Lalo – Faco","Mario – Niga","Boris – Hugo"]},
+];
+
+let S = (()=>{ try{ const r = JSON.parse(localStorage.getItem(KEY));
+  return r ? (r.matches || r) : {}; }catch(e){ return {}; } })();
+const save = ()=>{ try{
+  localStorage.setItem(KEY, JSON.stringify({teams: TEAMS, matches: S})); }catch(e){} };
 const rec  = id => (S[id] = S[id] || {a:"", b:"", tb:null});
 
-function outcome(id){
-  const r = S[id]; if(!r) return null;
+function outcome(id, store){
+  const r = (store || S)[id]; if(!r) return null;
   const a = r.a === "" ? null : +r.a, b = r.b === "" ? null : +r.b;
   if(a === null || b === null) return null;
   if(a > b) return {ga:a, gb:b, win:"a"};
@@ -248,11 +282,12 @@ function outcome(id){
   return r.tb ? {ga:a, gb:b, win:r.tb} : null;
 }
 
-function computeStandings(){
-  const T = TEAMS.map((n,i)=>({i, n, pj:0, pg:0, pp:0, gf:0, gc:0}));
+function computeStandings(store, teams){
+  store = store || S; teams = teams || TEAMS;
+  const T = teams.map((n,i)=>({i, n, pj:0, pg:0, pp:0, gf:0, gc:0}));
   const h2h = {};
   GROUP.forEach(m=>{
-    const o = outcome(m.id); if(!o) return;
+    const o = outcome(m.id, store); if(!o) return;
     const A = T[m.a], B = T[m.b];
     A.pj++; B.pj++;
     A.gf += o.ga; A.gc += o.gb; B.gf += o.gb; B.gc += o.ga;
@@ -264,7 +299,7 @@ function computeStandings(){
     || (h2h[y.i+"-"+x.i] ? 1 : h2h[x.i+"-"+y.i] ? -1 : 0) || x.i - y.i);
   return T;
 }
-const groupDone = ()=> GROUP.every(m=>outcome(m.id));
+const groupDone = store => GROUP.every(m=>outcome(m.id, store));
 
 function matchCard(m, nameA, nameB, isFinal){
   const r = rec(m.id), o = outcome(m.id);
@@ -313,6 +348,62 @@ function render(){
 
   if(champ && champ !== lastChamp){ lastChamp = champ; blast(); }
   if(!champ) lastChamp = null;
+}
+
+/* ---------- historial de fechas anteriores ---------- */
+function renderHistory(){
+  const el = document.getElementById("history");
+  const blocks = [];
+
+  EDITIONS.forEach(ed=>{
+    if(ed.key === KEY) return;
+    let raw = null;
+    try{ raw = JSON.parse(localStorage.getItem(ed.key)); }catch(e){}
+    if(!raw) return;
+    const store = raw.matches || raw;
+    if(!store || !Object.keys(store).length) return;
+
+    const teams = raw.teams || ed.teams;
+    const T = computeStandings(store, teams);
+    const ready = groupDone(store);
+    const fo = outcome("f1", store), to = outcome("f2", store);
+    const wOf = (f,o)=> !ready || !o ? null : (o.win==="a" ? T[f.posA].n : T[f.posB].n);
+    const lOf = (f,o)=> !ready || !o ? null : (o.win==="a" ? T[f.posB].n : T[f.posA].n);
+    const champ = wOf(FINALS[0], fo);
+
+    const filas = T.map((t,i)=>
+      `<tr class="p${i+1}"><td class="pos">${i+1}</td><td class="team">${t.n}</td>
+       <td>${t.pj}</td><td>${t.pg}</td><td>${t.pp}</td><td>${t.gf}</td><td>${t.gc}</td>
+       <td>${t.dif>0?"+":""}${t.dif}</td><td class="pts">${t.pts}</td></tr>`).join("");
+
+    const linea = (m, nA, nB)=>{
+      const o = outcome(m.id, store); if(!o) return "";
+      const tb = store[m.id] && store[m.id].tb ? " <i>(tie-break)</i>" : "";
+      const A = o.win==="a" ? `<b>${nA}</b>` : nA, B = o.win==="b" ? `<b>${nB}</b>` : nB;
+      return `${m.slot} · ${A} ${o.ga}-${o.gb} ${B}${tb}`;
+    };
+    const partidos = GROUP.map(m=>linea(m, teams[m.a], teams[m.b])).filter(Boolean);
+    if(ready){
+      [[FINALS[0], fo], [FINALS[1], to]].forEach(([f,o])=>{
+        if(o) partidos.push(linea({...f, slot:f.slot}, T[f.posA].n, T[f.posB].n));
+      });
+    }
+
+    blocks.push(`<div class="hist">
+      <div class="hbar"><span class="hdate">${ed.label}</span>${
+        champ ? `<span class="hchamp">🥇 ${champ}</span>` :
+                `<span class="hchamp" style="color:#7E90A8">Sin final cargada</span>`}</div>
+      <table><thead><tr><th></th><th style="text-align:left;padding-left:14px">Equipo</th>
+        <th>PJ</th><th>PG</th><th>PP</th><th>GF</th><th>GC</th><th>DIF</th><th>PTS</th></tr></thead>
+        <tbody>${filas}</tbody></table>
+      ${partidos.length ? `<div class="hmatches">${partidos.join("<br>")}</div>` : ""}
+    </div>`);
+  });
+
+  el.innerHTML = blocks.length ? blocks.join("") :
+    `<div class="hempty">No hay fechas anteriores guardadas en este dispositivo.
+     Los resultados quedan solo en el navegador donde se cargaron, así que probá abrir
+     esta página en el celular que usaste de anotador.</div>`;
 }
 
 /* ---------- eventos ---------- */
@@ -399,7 +490,7 @@ function loop(){
   else { ctx.clearRect(0,0,cv.width,cv.height); raf = null; }
 }
 
-paint(); render();
+paint(); render(); renderHistory();
 </script>
 </body>
 </html>
