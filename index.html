@@ -355,10 +355,20 @@ function renderHistory(){
   const el = document.getElementById("history");
   const blocks = [];
 
-  EDITIONS.forEach(ed=>{
-    if(ed.key === KEY) return;
+  /* Barre TODAS las claves guardadas, no solo las registradas arriba.
+     Así ninguna fecha queda invisible aunque no la tengamos anotada. */
+  const known = {};
+  EDITIONS.forEach(e=>{ known[e.key] = e; });
+  const found = Object.keys(localStorage).filter(k=>k.indexOf("padelShowdown.") === 0);
+  const orden = EDITIONS.map(e=>e.key).filter(k=>found.indexOf(k) >= 0)
+                .concat(found.filter(k=>!known[k]));
+
+  orden.forEach(k=>{
+    if(k === KEY) return;
+    const ed = known[k] || {key:k, label:"Fecha " + k.replace("padelShowdown.",""),
+                            teams:["Equipo 1","Equipo 2","Equipo 3","Equipo 4"]};
     let raw = null;
-    try{ raw = JSON.parse(localStorage.getItem(ed.key)); }catch(e){}
+    try{ raw = JSON.parse(localStorage.getItem(k)); }catch(e){}
     if(!raw) return;
     const store = raw.matches || raw;
     if(!store || !Object.keys(store).length) return;
@@ -403,7 +413,10 @@ function renderHistory(){
   el.innerHTML = blocks.length ? blocks.join("") :
     `<div class="hempty">No hay fechas anteriores guardadas en este dispositivo.
      Los resultados quedan solo en el navegador donde se cargaron, así que probá abrir
-     esta página en el celular que usaste de anotador.</div>`;
+     esta página en el celular que usaste de anotador.
+     <br><br><b>Diagnóstico:</b> claves encontradas: ${found.length ? found.join(", ") : "ninguna"}
+     · total en este navegador: ${localStorage.length}
+     · fecha actual: ${KEY}</div>`;
 }
 
 /* ---------- eventos ---------- */
