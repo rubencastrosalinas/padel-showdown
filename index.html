@@ -35,10 +35,24 @@
     background-size:44px 44px}
   .wrap{max-width:860px;margin:0 auto;padding:0 14px;position:relative;z-index:1}
 
+  /* ---------- HERO / FOTO ---------- */
+  .hero{position:relative;z-index:2;width:100%;overflow:hidden;line-height:0;
+    background:#0A101C}
+  .hero img{width:100%;height:auto;display:block;object-fit:cover;
+    object-position:center 42%;aspect-ratio:4/3;
+    filter:saturate(1.05) contrast(1.03)}
+  .hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(7,9,15,.45) 0%,rgba(7,9,15,0) 22%,
+                               rgba(7,9,15,0) 55%,rgba(7,9,15,.85) 88%,var(--bg) 100%)}
+  .hero .tag{position:absolute;left:0;right:0;bottom:8px;z-index:3;text-align:center;
+    font-family:var(--cond);font-size:11px;letter-spacing:4px;text-transform:uppercase;
+    color:#9FC2DC;line-height:1.4;padding:0 14px;text-shadow:0 2px 10px #000}
+  @media(min-width:620px){ .hero img{aspect-ratio:16/9;object-position:center 38%} }
+  @media(min-width:900px){ .hero img{aspect-ratio:21/8} }
+
   /* ---------- HEADER ---------- */
-  header{position:relative;z-index:2;text-align:center;padding:26px 14px 20px;
-    background:linear-gradient(180deg,rgba(7,9,15,.92),rgba(7,9,15,.55));
-    border-bottom:1px solid var(--line)}
+  header{position:relative;z-index:2;text-align:center;padding:14px 14px 20px;
+    background:transparent;border-bottom:1px solid var(--line)}
   .kick{font-family:var(--cond);font-size:12px;letter-spacing:5px;color:var(--cyan);
         text-transform:uppercase;margin-bottom:4px}
   h1{font-family:var(--head);font-size:clamp(34px,10vw,62px);line-height:.92;margin:0;
@@ -187,6 +201,13 @@
 <body>
 <canvas id="confetti"></canvas>
 
+<div class="hero">
+  <img src="equipo.webp" width="1000" height="750"
+       alt="Los jugadores del cuadrangular posando en la cancha con las medallas"
+       onerror="this.closest('.hero').style.display='none'">
+  <div class="tag">La banda · cuadrangular de los domingos</div>
+</div>
+
 <header>
   <div class="kick">Domingo 23 de agosto · 4 equipos · 8 partidos · 1 corona</div>
   <h1>Pádel Showdown</h1>
@@ -223,7 +244,7 @@
   <h2>Podio</h2>
   <div class="podium" id="podium"></div>
 
-  <h2>Fechas anteriores <span>· guardadas en este dispositivo</span></h2>
+  <h2>Fechas anteriores <span>· historial del torneo</span></h2>
   <div id="history"></div>
 
   <h2>Reglamento</h2>
@@ -265,6 +286,28 @@ const EDITIONS = [
    teams:["Faco – Negro","Sonru – Cristian","Gordo – Mario","Lalo – Pancho"]},
   {key:"padelShowdown.v1", label:"Primera fecha",
    teams:["Sonru – Gordo","Lalo – Faco","Mario – Niga","Boris – Hugo"]},
+];
+
+/* ARCHIVO PERMANENTE — viaja en el repo, se ve desde cualquier dispositivo.
+   Acá se dejan las fechas ya jugadas para que no dependan de ningún celular. */
+const ARCHIVE = [
+  {key:"padelShowdown.2026-08-23", label:"Domingo 23 de agosto",
+   teams:["Sonru – Nano","Lalo – Cristian","Christofer – Boris","Mario – Gordo"],
+   matches:{ g1:{a:"2",b:"5",tb:null}, g2:{a:"5",b:"4",tb:null}, g3:{a:"5",b:"1",tb:null},
+             g4:{a:"5",b:"2",tb:null}, g5:{a:"2",b:"5",tb:null}, g6:{a:"2",b:"5",tb:null},
+             f1:{a:"6",b:"3",tb:null}, f2:{a:"3",b:"6",tb:null} }},
+
+  {key:"padelShowdown.2026-08-16", label:"Domingo 16 de agosto",
+   teams:["Faco – Negro","Sonru – Cristian","Gordo – Mario","Lalo – Pancho"],
+   matches:{ g1:{a:"5",b:"2",tb:null}, g2:{a:"3",b:"5",tb:null}, g3:{a:"6",b:"5",tb:null},
+             g4:{a:"2",b:"5",tb:null}, g5:{a:"5",b:"3",tb:null}, g6:{a:"5",b:"0",tb:null},
+             f1:{a:"4",b:"6",tb:null}, f2:{a:"5",b:"6",tb:null} }},
+
+  {key:"padelShowdown.v1", label:"Primera fecha",
+   teams:["Sonru – Gordo","Lalo – Faco","Mario – Niga","Boris – Hugo"],
+   matches:{ g1:{a:"5",b:"1",tb:null}, g2:{a:"3",b:"5",tb:null}, g3:{a:"3",b:"5",tb:null},
+             g4:{a:"0",b:"5",tb:null}, g5:{a:"5",b:"3",tb:null}, g6:{a:"5",b:"3",tb:null},
+             f1:{a:"6",b:"3",tb:null}, f2:{a:"6",b:"2",tb:null} }},
 ];
 
 let S = (()=>{ try{ const r = JSON.parse(localStorage.getItem(KEY));
@@ -351,72 +394,71 @@ function render(){
 }
 
 /* ---------- historial de fechas anteriores ---------- */
+function histCard(label, teams, store){
+  const T = computeStandings(store, teams);
+  const ready = groupDone(store);
+  const fo = outcome("f1", store), to = outcome("f2", store);
+  const wOf = (f,o)=> !ready || !o ? null : (o.win==="a" ? T[f.posA].n : T[f.posB].n);
+  const champ = wOf(FINALS[0], fo);
+
+  const filas = T.map((t,i)=>
+    `<tr class="p${i+1}"><td class="pos">${i+1}</td><td class="team">${t.n}</td>
+     <td>${t.pj}</td><td>${t.pg}</td><td>${t.pp}</td><td>${t.gf}</td><td>${t.gc}</td>
+     <td>${t.dif>0?"+":""}${t.dif}</td><td class="pts">${t.pts}</td></tr>`).join("");
+
+  const linea = (m, nA, nB)=>{
+    const o = outcome(m.id, store); if(!o) return "";
+    const tb = store[m.id] && store[m.id].tb ? " <i>(tie-break)</i>" : "";
+    const A = o.win==="a" ? `<b>${nA}</b>` : nA, B = o.win==="b" ? `<b>${nB}</b>` : nB;
+    return `${m.slot} · ${A} ${o.ga}-${o.gb} ${B}${tb}`;
+  };
+  const partidos = GROUP.map(m=>linea(m, teams[m.a], teams[m.b])).filter(Boolean);
+  if(ready) FINALS.forEach(f=>{
+    if(outcome(f.id, store)) partidos.push(linea(f, T[f.posA].n, T[f.posB].n));
+  });
+  if(!partidos.length) return "";
+
+  return `<div class="hist">
+    <div class="hbar"><span class="hdate">${label}</span>${
+      champ ? `<span class="hchamp">🥇 ${champ}</span>` :
+              `<span class="hchamp" style="color:#7E90A8">Sin final cargada</span>`}</div>
+    <table><thead><tr><th></th><th style="text-align:left;padding-left:14px">Equipo</th>
+      <th>PJ</th><th>PG</th><th>PP</th><th>GF</th><th>GC</th><th>DIF</th><th>PTS</th></tr></thead>
+      <tbody>${filas}</tbody></table>
+    <div class="hmatches">${partidos.join("<br>")}</div>
+  </div>`;
+}
+
 function renderHistory(){
   const el = document.getElementById("history");
-  const blocks = [];
-
-  /* Barre TODAS las claves guardadas, no solo las registradas arriba.
-     Así ninguna fecha queda invisible aunque no la tengamos anotada. */
-  const known = {};
-  EDITIONS.forEach(e=>{ known[e.key] = e; });
+  const known = {}; EDITIONS.forEach(e=>{ known[e.key] = e; });
   const found = Object.keys(localStorage).filter(k=>k.indexOf("padelShowdown.") === 0);
-  const orden = EDITIONS.map(e=>e.key).filter(k=>found.indexOf(k) >= 0)
-                .concat(found.filter(k=>!known[k]));
+  const seen = {}, blocks = [];
 
-  orden.forEach(k=>{
-    if(k === KEY) return;
-    const ed = known[k] || {key:k, label:"Fecha " + k.replace("padelShowdown.",""),
-                            teams:["Equipo 1","Equipo 2","Equipo 3","Equipo 4"]};
+  /* 1) Archivo del repo: se ve siempre, en cualquier dispositivo.
+        La fecha actual se omite acá si ya se está mostrando en vivo arriba. */
+  ARCHIVE.forEach(a=>{
+    seen[a.key] = 1;
+    if(a.key === KEY && found.indexOf(KEY) >= 0) return;
+    const c = histCard(a.label, a.teams, a.matches); if(c) blocks.push(c);
+  });
+
+  /* 2) Lo que tenga guardado este navegador y no esté archivado todavía. */
+  EDITIONS.map(e=>e.key).concat(found).forEach(k=>{
+    if(seen[k] || k === KEY || found.indexOf(k) < 0) return;
+    seen[k] = 1;
     let raw = null;
     try{ raw = JSON.parse(localStorage.getItem(k)); }catch(e){}
     if(!raw) return;
     const store = raw.matches || raw;
     if(!store || !Object.keys(store).length) return;
-
-    const teams = raw.teams || ed.teams;
-    const T = computeStandings(store, teams);
-    const ready = groupDone(store);
-    const fo = outcome("f1", store), to = outcome("f2", store);
-    const wOf = (f,o)=> !ready || !o ? null : (o.win==="a" ? T[f.posA].n : T[f.posB].n);
-    const lOf = (f,o)=> !ready || !o ? null : (o.win==="a" ? T[f.posB].n : T[f.posA].n);
-    const champ = wOf(FINALS[0], fo);
-
-    const filas = T.map((t,i)=>
-      `<tr class="p${i+1}"><td class="pos">${i+1}</td><td class="team">${t.n}</td>
-       <td>${t.pj}</td><td>${t.pg}</td><td>${t.pp}</td><td>${t.gf}</td><td>${t.gc}</td>
-       <td>${t.dif>0?"+":""}${t.dif}</td><td class="pts">${t.pts}</td></tr>`).join("");
-
-    const linea = (m, nA, nB)=>{
-      const o = outcome(m.id, store); if(!o) return "";
-      const tb = store[m.id] && store[m.id].tb ? " <i>(tie-break)</i>" : "";
-      const A = o.win==="a" ? `<b>${nA}</b>` : nA, B = o.win==="b" ? `<b>${nB}</b>` : nB;
-      return `${m.slot} · ${A} ${o.ga}-${o.gb} ${B}${tb}`;
-    };
-    const partidos = GROUP.map(m=>linea(m, teams[m.a], teams[m.b])).filter(Boolean);
-    if(ready){
-      [[FINALS[0], fo], [FINALS[1], to]].forEach(([f,o])=>{
-        if(o) partidos.push(linea({...f, slot:f.slot}, T[f.posA].n, T[f.posB].n));
-      });
-    }
-
-    blocks.push(`<div class="hist">
-      <div class="hbar"><span class="hdate">${ed.label}</span>${
-        champ ? `<span class="hchamp">🥇 ${champ}</span>` :
-                `<span class="hchamp" style="color:#7E90A8">Sin final cargada</span>`}</div>
-      <table><thead><tr><th></th><th style="text-align:left;padding-left:14px">Equipo</th>
-        <th>PJ</th><th>PG</th><th>PP</th><th>GF</th><th>GC</th><th>DIF</th><th>PTS</th></tr></thead>
-        <tbody>${filas}</tbody></table>
-      ${partidos.length ? `<div class="hmatches">${partidos.join("<br>")}</div>` : ""}
-    </div>`);
+    const ed = known[k] || {label:"Fecha " + k.replace("padelShowdown.",""),
+                            teams:["Equipo 1","Equipo 2","Equipo 3","Equipo 4"]};
+    const c = histCard(ed.label, raw.teams || ed.teams, store); if(c) blocks.push(c);
   });
 
   el.innerHTML = blocks.length ? blocks.join("") :
-    `<div class="hempty">No hay fechas anteriores guardadas en este dispositivo.
-     Los resultados quedan solo en el navegador donde se cargaron, así que probá abrir
-     esta página en el celular que usaste de anotador.
-     <br><br><b>Diagnóstico:</b> claves encontradas: ${found.length ? found.join(", ") : "ninguna"}
-     · total en este navegador: ${localStorage.length}
-     · fecha actual: ${KEY}</div>`;
+    `<div class="hempty">Todavía no hay fechas anteriores para mostrar.</div>`;
 }
 
 /* ---------- eventos ---------- */
