@@ -366,6 +366,17 @@ const EDITIONS = [
 /* ARCHIVO PERMANENTE — viaja en el repo, se ve desde cualquier dispositivo.
    Acá se dejan las fechas ya jugadas para que no dependan de ningún celular. */
 const ARCHIVE = [
+  {key:"padelShowdown.2026-08-30", label:"Domingo 30 de agosto",
+   teams:["Fako – Cristian","Sonru – Nano","Lalo – Negro","Mario – Gordo"],
+   summary:{
+     champ:"Fako – Cristian",
+     tabla:[["Fako – Cristian",3,2,1,14,10],["Sonru – Nano",3,2,1,14,13],
+            ["Mario – Gordo",3,1,2,13,14],["Lalo – Negro",3,1,2,10,14]],
+     partidos:["FINAL · <b>Fako – Cristian</b> 5-0 Sonru – Nano",
+               "3ER PUESTO · <b>Mario – Gordo</b> 6-3 Lalo – Negro"],
+     nota:"Detalle partido por partido de la fase de grupos no registrado."
+   }},
+
   {key:"padelShowdown.2026-08-23", label:"Domingo 23 de agosto",
    teams:["Sonru – Nano","Lalo – Cristian","Christofer – Boris","Mario – Gordo"],
    matches:{ g1:{a:"2",b:"5",tb:null}, g2:{a:"5",b:"4",tb:null}, g3:{a:"5",b:"1",tb:null},
@@ -646,6 +657,25 @@ function histCard(label, teams, store){
   </div>`;
 }
 
+function histCardSummary(label, sum){
+  const filas = sum.tabla.map((r,i)=>{
+    const n = r[0], pj = r[1], pg = r[2], pp = r[3], gf = r[4], gc = r[5];
+    const dif = gf - gc, pts = pg * 2;
+    return `<tr class="p${i+1}"><td class="pos">${i+1}</td><td class="team">${n}</td>
+      <td>${pj}</td><td>${pg}</td><td>${pp}</td><td>${gf}</td><td>${gc}</td>
+      <td>${dif>0?"+":""}${dif}</td><td class="pts">${pts}</td></tr>`;
+  }).join("");
+  return `<div class="hist">
+    <div class="hbar"><span class="hdate">${label}</span>
+      <span class="hchamp">🥇 ${sum.champ}</span></div>
+    <table><thead><tr><th></th><th style="text-align:left;padding-left:14px">Equipo</th>
+      <th>PJ</th><th>PG</th><th>PP</th><th>GF</th><th>GC</th><th>DIF</th><th>PTS</th></tr></thead>
+      <tbody>${filas}</tbody></table>
+    <div class="hmatches">${sum.partidos.join("<br>")}${
+      sum.nota ? `<br><i style="color:#7E90A8">${sum.nota}</i>` : ""}</div>
+  </div>`;
+}
+
 function renderHistory(){
   const el = document.getElementById("history");
   const known = {}; EDITIONS.forEach(e=>{ known[e.key] = e; });
@@ -657,7 +687,9 @@ function renderHistory(){
   ARCHIVE.forEach(a=>{
     seen[a.key] = 1;
     if(a.key === KEY && found.indexOf(KEY) >= 0) return;
-    const c = histCard(a.label, a.teams, a.matches); if(c) blocks.push(c);
+    const c = a.summary ? histCardSummary(a.label, a.summary)
+                        : histCard(a.label, a.teams, a.matches);
+    if(c) blocks.push(c);
   });
 
   /* 2) Lo que tenga guardado este navegador y no esté archivado todavía. */
