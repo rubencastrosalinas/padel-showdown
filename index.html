@@ -191,6 +191,31 @@
   .codebox:focus{outline:none;border-color:var(--cyan)}
   .savemsg{font-family:var(--cond);font-size:15px;color:var(--cyan);margin-top:10px;min-height:19px}
 
+  /* ---------- RANKING ---------- */
+  .rankwrap{border-radius:16px;overflow:hidden;border:1px solid var(--line);
+    background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
+  .rankrules{display:flex;flex-wrap:wrap;gap:5px 14px;padding:12px 14px;background:#0A1120;
+    border-bottom:1px solid var(--line);font-family:var(--cond);font-size:13px;
+    letter-spacing:.4px;color:#8FA1B8}
+  .rankrules b{color:var(--lime)}
+  .ranktable{width:100%;border-collapse:collapse}
+  .ranktable th{font-family:var(--head);font-size:10px;letter-spacing:1.2px;padding:10px 3px;
+    background:#0A1120;color:var(--cyan);border-bottom:1px solid var(--line)}
+  .ranktable td{padding:11px 3px;text-align:center;font-size:14px;font-weight:700;color:#C4D3E7;
+    border-bottom:1px solid rgba(36,51,73,.5);font-variant-numeric:tabular-nums}
+  .ranktable tr:last-child td{border-bottom:none}
+  .ranktable td.rname{text-align:left;padding-left:12px;font-family:var(--cond);font-size:18px;
+    letter-spacing:.4px;text-transform:uppercase;color:var(--txt)}
+  .ranktable td.rpos{font-family:var(--head);font-size:15px;width:30px;color:#5C6E88}
+  .ranktable td.rbon{color:var(--gold)}
+  .ranktable td.rpts{font-family:var(--head);font-size:18px;color:var(--lime);
+    background:rgba(212,255,43,.06);text-shadow:0 0 14px rgba(212,255,43,.3)}
+  tr.rp1 td{background:rgba(255,201,51,.07)} tr.rp1 .rpos{color:var(--gold)}
+  tr.rp1 td.rname{box-shadow:inset 4px 0 0 var(--gold)}
+  tr.rp2 .rpos{color:var(--silver)} tr.rp2 td.rname{box-shadow:inset 4px 0 0 var(--silver)}
+  tr.rp3 .rpos{color:var(--bronze)} tr.rp3 td.rname{box-shadow:inset 4px 0 0 var(--bronze)}
+  @media(max-width:540px){ .ranktable .rhide{display:none} .ranktable td.rname{font-size:16px} }
+
   /* ---------- HISTORIAL ---------- */
   .hist{border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px;
     background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
@@ -274,6 +299,22 @@
       <button class="b-alt" id="cancelImport">Cancelar</button>
     </div>
     <div class="savemsg" id="saveMsg"></div>
+  </div>
+
+  <h2>Ranking personal <span>· acumulado 4 fechas</span></h2>
+  <div class="rankwrap">
+    <div class="rankrules">
+      <span><b>GF</b> juegos ganados &middot; <b>10 pts</b> c/u</span>
+      <span>🥇 <b>+100</b></span><span>🥈 <b>+50</b></span>
+      <span>🥉 <b>+30</b></span><span>4º <b>0</b></span>
+    </div>
+    <table class="ranktable">
+      <thead><tr>
+        <th></th><th style="text-align:left;padding-left:12px">Jugador</th><th>F</th>
+        <th class="rhide">Reg</th><th class="rhide">Def</th><th>GF</th><th>Bonus</th><th>Puntos</th>
+      </tr></thead>
+      <tbody id="ranking"></tbody>
+    </table>
   </div>
 
   <h2>Fechas anteriores <span>· historial del torneo</span></h2>
@@ -428,6 +469,36 @@ function render(){
   if(champ && champ !== lastChamp){ lastChamp = champ; blast(); }
   if(!champ) lastChamp = null;
   updateSave();
+}
+
+/* ---------- ranking personal acumulado ---------- */
+/* [nombre, fechas jugadas, GF fase regular, GF definicion, bonus por posiciones, puntos] */
+const RANKING = [
+  ["Lalo",         4, 44, 21, 160, 810],
+  ["Faco / Fako",  3, 43, 15, 180, 760],
+  ["Gordo",        4, 41, 18, 160, 750],
+  ["Sonru",        4, 49, 11, 100, 700],
+  ["Cristian",     3, 35, 16, 130, 640],
+  ["Boris",        2, 28, 12, 200, 600],
+  ["Mario",        4, 32, 17, 110, 600],
+  ["Negro / Niga", 3, 30,  9,  50, 440],
+  ["Nano",         2, 23,  3,  50, 310],
+  ["Christofer",   1, 15,  6, 100, 310],
+  ["Hugo",         1, 13,  6, 100, 290],
+  ["Pancho",       1, 13,  6, 100, 290],
+];
+
+function renderRanking(){
+  const tb = document.getElementById("ranking"); if(!tb) return;
+  let pos = 0, prev = null;
+  tb.innerHTML = RANKING.map((r,i)=>{
+    const nom = r[0], fe = r[1], reg = r[2], def = r[3], bon = r[4], pts = r[5];
+    if(pts !== prev){ pos = i + 1; prev = pts; }
+    return `<tr class="${pos<=3 ? "rp"+pos : ""}">
+      <td class="rpos">${pos}</td><td class="rname">${nom}</td><td>${fe}</td>
+      <td class="rhide">${reg}</td><td class="rhide">${def}</td><td>${reg+def}</td>
+      <td class="rbon">${bon}</td><td class="rpts">${pts}</td></tr>`;
+  }).join("");
 }
 
 /* ---------- guardar / compartir / importar ---------- */
@@ -691,7 +762,7 @@ function loop(){
   else { ctx.clearRect(0,0,cv.width,cv.height); raf = null; }
 }
 
-paint(); render(); renderHistory();
+paint(); render(); renderRanking(); renderHistory();
 </script>
 </body>
 </html>
