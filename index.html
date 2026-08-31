@@ -175,6 +175,22 @@
     border-radius:16px;border:1px solid var(--line);
     background:linear-gradient(150deg,var(--card),var(--card2))}
   .rules b{color:var(--lime);letter-spacing:.6px}
+  /* ---------- GUARDAR ---------- */
+  .savebox{border-radius:16px;padding:16px;border:1px solid var(--line);
+    background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
+  .savebox.ready{border-color:rgba(212,255,43,.5);
+    box-shadow:0 0 0 1px rgba(212,255,43,.18),0 14px 34px -18px #000}
+  .saveinfo{font-family:var(--cond);font-size:16px;line-height:1.55;color:#95A7BE;margin-bottom:12px}
+  .savebox.ready .saveinfo{color:#DCEFA8}
+  .saveinfo b{color:var(--lime)}
+  .savebtns{display:flex;gap:9px;flex-wrap:wrap}
+  .savebtns button{flex:1;min-width:130px}
+  .codebox{display:none;width:100%;margin-top:11px;min-height:100px;padding:11px;
+    border-radius:11px;border:1.5px solid var(--line);background:#0A101C;color:#C4D3E7;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;resize:vertical}
+  .codebox:focus{outline:none;border-color:var(--cyan)}
+  .savemsg{font-family:var(--cond);font-size:15px;color:var(--cyan);margin-top:10px;min-height:19px}
+
   /* ---------- HISTORIAL ---------- */
   .hist{border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px;
     background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
@@ -242,6 +258,23 @@
 
   <h2>Podio</h2>
   <div class="podium" id="podium"></div>
+
+  <h2>Guardar la fecha <span>· para que no se pierda</span></h2>
+  <div class="savebox" id="saveBox">
+    <div class="saveinfo" id="saveInfo"></div>
+    <div class="savebtns">
+      <button class="b-go" id="shareBtn">Guardar y compartir</button>
+      <button class="b-alt" id="copyBtn">Copiar código</button>
+      <button class="b-alt" id="pasteBtn">Pegar código</button>
+    </div>
+    <textarea id="codeBox" class="codebox" spellcheck="false"
+      placeholder="Pegá acá un código que empiece con PADEL1| y tocá Importar"></textarea>
+    <div class="savebtns" id="importRow" style="display:none;margin-top:10px">
+      <button class="b-go" id="doImport">Importar</button>
+      <button class="b-alt" id="cancelImport">Cancelar</button>
+    </div>
+    <div class="savemsg" id="saveMsg"></div>
+  </div>
 
   <h2>Fechas anteriores <span>· historial del torneo</span></h2>
   <div id="history"></div>
@@ -311,10 +344,12 @@ const ARCHIVE = [
              f1:{a:"6",b:"3",tb:null}, f2:{a:"6",b:"2",tb:null} }},
 ];
 
+const LABEL = (EDITIONS.filter(e=>e.key===KEY)[0]||{}).label || KEY;
+
 let S = (()=>{ try{ const r = JSON.parse(localStorage.getItem(KEY));
   return r ? (r.matches || r) : {}; }catch(e){ return {}; } })();
 const save = ()=>{ try{
-  localStorage.setItem(KEY, JSON.stringify({teams: TEAMS, matches: S})); }catch(e){} };
+  localStorage.setItem(KEY, JSON.stringify({teams: TEAMS, matches: S, label: LABEL})); }catch(e){} };
 const rec  = id => (S[id] = S[id] || {a:"", b:"", tb:null});
 
 function outcome(id, store){
@@ -392,7 +427,117 @@ function render(){
 
   if(champ && champ !== lastChamp){ lastChamp = champ; blast(); }
   if(!champ) lastChamp = null;
+  updateSave();
 }
+
+/* ---------- guardar / compartir / importar ---------- */
+const IDS = GROUP.map(m=>m.id).concat(FINALS.map(f=>f.id));
+
+function buildCode(){
+  const sc = IDS.map(id=>{
+    const r = S[id];
+    if(!r || r.a === "" || r.b === "") return "";
+    return r.a + "-" + r.b + (r.tb ? ("*" + r.tb) : "");
+  });
+  const limpio = x => String(x).replace(/[|;,]/g, " ");
+  return "PADEL1|" + KEY + "|" + limpio(LABEL) + "|" +
+         TEAMS.map(limpio).join(";") + "|" + sc.join(",");
+}
+
+function buildText(){
+  const T = computeStandings(), ready = groupDone();
+  const L = ["🎾 PÁDEL SHOWDOWN — " + LABEL, ""];
+  GROUP.forEach(m=>{
+    const o = outcome(m.id); if(!o) return;
+    L.push(m.slot + "  " + TEAMS[m.a] + "  " + o.ga + "-" + o.gb + "  " + TEAMS[m.b] +
+           (S[m.id] && S[m.id].tb ? "  (tie-break)" : ""));
+  });
+  if(ready){
+    FINALS.forEach(f=>{
+      const o = outcome(f.id); if(!o) return;
+      L.push(f.slot + "  " + T[f.posA].n + "  " + o.ga + "-" + o.gb + "  " + T[f.posB].n);
+    });
+    L.push("", "TABLA");
+    T.forEach((t,i)=> L.push(" " + (i+1) + ". " + t.n + "   PJ" + t.pj + " PG" + t.pg +
+      " GF" + t.gf + " GC" + t.gc + " DIF" + (t.dif>0?"+":"") + t.dif + " PTS" + t.pts));
+    const fo = outcome("f1"), to = outcome("f2");
+    const gan = (f,o)=> o.win === "a" ? T[f.posA].n : T[f.posB].n;
+    const per = (f,o)=> o.win === "a" ? T[f.posB].n : T[f.posA].n;
+    if(fo){ L.push("", "🥇 " + gan(FINALS[0],fo), "🥈 " + per(FINALS[0],fo)); }
+    if(to){ L.push("🥉 " + gan(FINALS[1],to)); }
+  }
+  L.push("", "— código de respaldo, no lo borres —", buildCode());
+  return L.join("\n");
+}
+
+function importCode(raw){
+  const p = String(raw||"").trim().split("|");
+  if(p[0] !== "PADEL1" || p.length < 5) return "Ese texto no es un código válido (tiene que empezar con PADEL1|).";
+  const key = p[1].trim(), label = p[2].trim() || key;
+  const teams = p[3].split(";").map(x=>x.trim());
+  if(teams.length !== 4) return "El código no trae los cuatro equipos.";
+  const matches = {};
+  p[4].split(",").forEach((x,i)=>{
+    const m = String(x).trim().match(/^(\d)-(\d)(?:\*(a|b))?$/);
+    if(m && IDS[i]) matches[IDS[i]] = {a:m[1], b:m[2], tb:m[3]||null};
+  });
+  if(!Object.keys(matches).length) return "El código no trae ningún resultado.";
+  try{ localStorage.setItem(key, JSON.stringify({teams, matches, label})); }
+  catch(e){ return "Este navegador no dejó guardar los datos."; }
+  if(!EDITIONS.some(e=>e.key === key)) EDITIONS.unshift({key, label, teams});
+  if(key === KEY){ S = matches; render(); }
+  renderHistory();
+  return null;
+}
+
+const saveMsg = t => { document.getElementById("saveMsg").textContent = t || ""; };
+
+async function copiar(txt, ok){
+  try{ await navigator.clipboard.writeText(txt); saveMsg(ok); return; }catch(e){}
+  const ta = document.getElementById("codeBox");
+  ta.style.display = "block"; ta.value = txt; ta.focus(); ta.select();
+  try{ document.execCommand("copy"); saveMsg(ok); }
+  catch(e){ saveMsg("Copialo a mano desde el cuadro de abajo."); }
+}
+
+function updateSave(){
+  const box = document.getElementById("saveBox");
+  if(!box) return;
+  const completa = groupDone() && outcome("f1") && outcome("f2");
+  box.classList.toggle("ready", !!completa);
+  document.getElementById("saveInfo").innerHTML = completa
+    ? "<b>Fecha completa.</b> Tocá <b>Guardar y compartir</b> y mandala al grupo. Queda respaldada y cualquiera puede abrirla en su celular con <b>Pegar código</b>."
+    : "Cuando termine la fecha, guardala acá. El respaldo es un texto que podés mandar por WhatsApp: con eso los resultados dejan de vivir solo en este teléfono.";
+}
+
+document.getElementById("shareBtn").onclick = async ()=>{
+  const txt = buildText();
+  if(navigator.share){
+    try{ await navigator.share({title:"Pádel Showdown · " + LABEL, text:txt}); saveMsg("Listo, compartido."); }
+    catch(e){ if(!(e && e.name === "AbortError")) saveMsg("No se pudo compartir; usá 'Copiar código'."); }
+    return;
+  }
+  await copiar(txt, "Resultados copiados. Pegalos donde quieras.");
+};
+document.getElementById("copyBtn").onclick = ()=> copiar(buildCode(), "Código copiado.");
+document.getElementById("pasteBtn").onclick = ()=>{
+  const ta = document.getElementById("codeBox");
+  ta.style.display = "block"; ta.value = ""; ta.focus();
+  document.getElementById("importRow").style.display = "flex";
+  saveMsg("Pegá el código y tocá Importar.");
+};
+document.getElementById("cancelImport").onclick = ()=>{
+  document.getElementById("codeBox").style.display = "none";
+  document.getElementById("importRow").style.display = "none";
+  saveMsg("");
+};
+document.getElementById("doImport").onclick = ()=>{
+  const err = importCode(document.getElementById("codeBox").value);
+  if(err){ saveMsg(err); return; }
+  document.getElementById("codeBox").style.display = "none";
+  document.getElementById("importRow").style.display = "none";
+  saveMsg("Fecha importada. Mirá abajo en Fechas anteriores.");
+};
 
 /* ---------- historial de fechas anteriores ---------- */
 function histCard(label, teams, store){
@@ -453,7 +598,7 @@ function renderHistory(){
     if(!raw) return;
     const store = raw.matches || raw;
     if(!store || !Object.keys(store).length) return;
-    const ed = known[k] || {label:"Fecha " + k.replace("padelShowdown.",""),
+    const ed = known[k] || {label: raw.label || ("Fecha " + k.replace("padelShowdown.","")),
                             teams:["Equipo 1","Equipo 2","Equipo 3","Equipo 4"]};
     const c = histCard(ed.label, raw.teams || ed.teams, store); if(c) blocks.push(c);
   });
