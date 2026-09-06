@@ -180,6 +180,15 @@
     background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
   .savebox.ready{border-color:rgba(212,255,43,.5);
     box-shadow:0 0 0 1px rgba(212,255,43,.18),0 14px 34px -18px #000}
+  .cloud{font-family:var(--cond);font-size:15px;font-weight:700;letter-spacing:.4px;
+    padding:10px 13px;border-radius:11px;margin-bottom:12px;display:flex;align-items:center;gap:9px;
+    background:#0A1120;border:1px solid var(--line);color:#8FA1B8}
+  .cloud.ok{border-color:rgba(212,255,43,.5);color:var(--lime);background:rgba(212,255,43,.07)}
+  .cloud.busy{border-color:rgba(0,229,255,.5);color:var(--cyan);background:rgba(0,229,255,.07)}
+  .cloud.bad{border-color:rgba(255,201,51,.5);color:var(--gold);background:rgba(255,201,51,.07)}
+  .cloud .dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex:0 0 auto;
+    box-shadow:0 0 10px currentColor}
+  .cloud.busy .dot{animation:pulse .9s infinite}
   .saveinfo{font-family:var(--cond);font-size:16px;line-height:1.55;color:#95A7BE;margin-bottom:12px}
   .savebox.ready .saveinfo{color:#DCEFA8}
   .saveinfo b{color:var(--lime)}
@@ -294,6 +303,7 @@
 
   <h2>Guardar la fecha <span>· para que no se pierda</span></h2>
   <div class="savebox" id="saveBox">
+    <div class="cloud" id="cloudBox">Conectando…</div>
     <div class="saveinfo" id="saveInfo"></div>
     <div class="savebtns">
       <button class="b-go" id="shareBtn">Crear link y compartir</button>
@@ -415,10 +425,74 @@ const ARCHIVE = [
 
 const LABEL = (EDITIONS.filter(e=>e.key===KEY)[0]||{}).label || KEY;
 
+/* ---------- nube: los resultados se graban en el servidor solos ---------- */
+const DB = "https://padel-showdown-e6dae-default-rtdb.firebaseio.com/fechas";
+const idNube  = k => String(k).replace(/\./g, "_");   /* Firebase no acepta puntos en las claves */
+const idLocal = k => String(k).replace(/_/g, ".");
+let CLOUD = {};
+let estadoNube = "cargando";
+/* OJO: render() crea casillas vacías en S, así que "tiene datos" se mide por
+   resultados cargados de verdad. Si no, un teléfono recién abierto subiría una
+   fecha en blanco y pisaría lo que hay en el servidor. */
+const conResultados = o => Object.keys(o || {})
+  .filter(i => o[i] && o[i].a !== "" && o[i].b !== "").length;
+
+function pintarNube(){
+  const el = document.getElementById("cloudBox"); if(!el) return;
+  const M = {
+    cargando: ["busy", "Conectando con el servidor…"],
+    guardando:["busy", "Guardando en el servidor…"],
+    ok:       ["ok",   "Guardado en el servidor · lo ve todo el mundo"],
+    sin:      ["bad",  "Sin conexión — guardado en este teléfono. Se sube solo cuando vuelva internet."]
+  };
+  const [c, t] = M[estadoNube] || M.cargando;
+  el.className = "cloud " + c;
+  el.innerHTML = '<span class="dot"></span><span>' + t + "</span>";
+}
+
+let tGuardar = null;
+function guardarNube(){
+  clearTimeout(tGuardar);
+  estadoNube = "guardando"; pintarNube();
+  tGuardar = setTimeout(async ()=>{
+    const cuerpo = {teams: TEAMS, matches: S, label: LABEL};
+    try{
+      const r = await fetch(DB + "/" + idNube(KEY) + ".json", {
+        method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(cuerpo)});
+      if(!r.ok) throw new Error(r.status);
+      CLOUD[idNube(KEY)] = cuerpo;
+      estadoNube = "ok";
+    }catch(e){ estadoNube = "sin"; }
+    pintarNube();
+  }, 700);
+}
+
+async function cargarNube(){
+  estadoNube = "cargando"; pintarNube();
+  try{
+    const r = await fetch(DB + ".json?t=" + Date.now(), {cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    CLOUD = (await r.json()) || {};
+    estadoNube = "ok";
+    /* si el servidor tiene la fecha de hoy más completa que este teléfono, la adopta */
+    const v = CLOUD[idNube(KEY)];
+    if(v && v.matches && conResultados(v.matches) >= conResultados(S)){
+      S = v.matches;
+      try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){}
+    }
+    /* y si el servidor no la tiene todavía pero este teléfono sí, la sube */
+    if(!v && conResultados(S)) guardarNube();
+  }catch(e){ estadoNube = "sin"; }
+  render(); renderRanking(); renderHistory(); pintarNube();
+}
+addEventListener("online", cargarNube);
+
 let S = (()=>{ try{ const r = JSON.parse(localStorage.getItem(KEY));
   return r ? (r.matches || r) : {}; }catch(e){ return {}; } })();
-const save = ()=>{ try{
-  localStorage.setItem(KEY, JSON.stringify({teams: TEAMS, matches: S, label: LABEL})); }catch(e){} };
+const save = ()=>{
+  try{ localStorage.setItem(KEY, JSON.stringify({teams: TEAMS, matches: S, label: LABEL})); }catch(e){}
+  guardarNube();
+};
 const rec  = id => (S[id] = S[id] || {a:"", b:"", tb:null});
 
 function outcome(id, store){
@@ -565,26 +639,35 @@ function aporteDeFecha(teams, store){
   return {reg, def, bonus};
 }
 
-/* Fechas posteriores al corte: archivo del repo + lo guardado en este navegador */
-function fechasNuevas(){
-  const out = [], seen = {};
-  const add = (key, label, teams, store)=>{
-    if(seen[key] || !teams || !store) return;
-    const f = fechaDe(key);
-    if(!f || f <= RANK_BASE_HASTA) return;
-    seen[key] = 1; out.push({key, f, label, teams, store});
+/* Todas las fechas disponibles. Prioridad: servidor > archivo del repo > este teléfono. */
+function fuentes(){
+  const out = {};
+  const poner = (key, label, teams, store, origen)=>{
+    if(!key || out[key] || !teams || teams.length !== 4) return;
+    if(!store || !Object.keys(store).length) return;
+    out[key] = {key, f: fechaDe(key) || "0000-00-00", label: label || key, teams, store, origen};
   };
-  ARCHIVE.forEach(a=>{ if(a.matches) add(a.key, a.label, a.teams, a.matches); });
+  Object.keys(CLOUD).forEach(id=>{
+    const v = CLOUD[id] || {}, k = idLocal(id);
+    poner(k, v.label, v.teams, v.matches, "nube");
+  });
+  ARCHIVE.forEach(a=>{ if(a.matches) poner(a.key, a.label, a.teams, a.matches, "repo"); });
   Object.keys(localStorage).filter(k=>k.indexOf("padelShowdown.") === 0).forEach(k=>{
     let raw = null;
     try{ raw = JSON.parse(localStorage.getItem(k)); }catch(e){}
     if(!raw) return;
-    const store = raw.matches || raw;
-    if(!store || !Object.keys(store).length) return;
     const ed = EDITIONS.filter(e=>e.key === k)[0] || {};
-    add(k, raw.label || ed.label || k, raw.teams || ed.teams, store);
+    poner(k, raw.label || ed.label, raw.teams || ed.teams, raw.matches || raw, "local");
   });
-  return out.sort((a,b)=> a.f < b.f ? -1 : 1);
+  return out;
+}
+
+/* Fechas posteriores al corte del ranking base */
+function fechasNuevas(){
+  const F = fuentes();
+  return Object.keys(F).map(k=>F[k])
+    .filter(d=> d.f !== "0000-00-00" && d.f > RANK_BASE_HASTA)
+    .sort((a,b)=> a.f < b.f ? -1 : 1);
 }
 
 function calcRanking(){
@@ -710,8 +793,8 @@ function updateSave(){
   const completa = groupDone() && outcome("f1") && outcome("f2");
   box.classList.toggle("ready", !!completa);
   document.getElementById("saveInfo").innerHTML = completa
-    ? "<b>Fecha completa.</b> Tocá <b>Crear link y compartir</b>: se arma un link que <b>lleva los resultados adentro</b>. Mandalo al grupo y a quien lo abra le aparece la fecha cargada, sin copiar nada."
-    : "Los resultados se guardan solos en este teléfono a medida que los cargás. Cuando termine la fecha, tocá <b>Crear link y compartir</b> para mandarla al grupo.";
+    ? "<b>Fecha completa.</b> Ya quedó grabada sola en el servidor: cualquiera que abra la página la ve. Los botones de abajo son extra, por si querés mandar el resumen al grupo."
+    : "No hay que apretar nada: cada resultado que escribís se graba solo en el servidor y todos lo ven al instante.";
 }
 
 /* El link lleva los resultados adentro: quien lo abre ve la fecha cargada,
@@ -827,34 +910,16 @@ function histCardSummary(label, sum){
 
 function renderHistory(){
   const el = document.getElementById("history");
-  const known = {}; EDITIONS.forEach(e=>{ known[e.key] = e; });
-  const found = Object.keys(localStorage).filter(k=>k.indexOf("padelShowdown.") === 0);
-  const seen = {}, items = [];
+  const F = fuentes(), items = [];
   const push = (key, html)=>{ if(html) items.push({key, f: fechaDe(key) || "0000-00-00", html}); };
 
-  /* 1) Archivo del repo: es la copia verificada, manda sobre lo local.
-        La fecha de hoy nunca se archiva todavía, así que se salta acá. */
-  ARCHIVE.forEach(a=>{
-    if(a.key === KEY && found.indexOf(KEY) >= 0) return;  /* si hay copia local, esa manda */
-    seen[a.key] = 1;
-    push(a.key, a.summary ? histCardSummary(a.label, a.summary)
-                          : histCard(a.label, a.teams, a.matches));
+  Object.keys(F).forEach(k=>{
+    const d = F[k];
+    const lbl = d.label + (k === KEY ? ' <span class="hhoy">hoy</span>' : "");
+    push(k, histCard(lbl, d.teams, d.store));
   });
-
-  /* 2) Lo guardado en este navegador — incluida la fecha de hoy. */
-  EDITIONS.map(e=>e.key).concat(found).forEach(k=>{
-    if(seen[k] || found.indexOf(k) < 0) return;
-    seen[k] = 1;
-    let raw = null;
-    try{ raw = JSON.parse(localStorage.getItem(k)); }catch(e){}
-    if(!raw) return;
-    const store = raw.matches || raw;
-    if(!store || !Object.keys(store).length) return;
-    const ed = known[k] || {label: raw.label || ("Fecha " + k.replace("padelShowdown.","")),
-                            teams:["Equipo 1","Equipo 2","Equipo 3","Equipo 4"]};
-    const lbl = ed.label + (k === KEY ? ' <span class="hhoy">hoy</span>' : "");
-    push(k, histCard(lbl, raw.teams || ed.teams, store));
-  });
+  /* fechas viejas de las que solo quedó el resumen */
+  ARCHIVE.forEach(a=>{ if(a.summary && !F[a.key]) push(a.key, histCardSummary(a.label, a.summary)); });
 
   items.sort((a,b)=> a.f < b.f ? 1 : a.f > b.f ? -1 : 0);
   el.innerHTML = items.length ? items.map(i=>i.html).join("") :
@@ -947,6 +1012,7 @@ function loop(){
 
 paint(); render(); renderRanking(); renderHistory(); leerLink();
 addEventListener("hashchange", leerLink);
+cargarNube();
 </script>
 </body>
 </html>
