@@ -189,7 +189,10 @@
     border-radius:11px;border:1.5px solid var(--line);background:#0A101C;color:#C4D3E7;
     font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;resize:vertical}
   .codebox:focus{outline:none;border-color:var(--cyan)}
-  .savemsg{font-family:var(--cond);font-size:15px;color:var(--cyan);margin-top:10px;min-height:19px}
+  .savemsg{font-family:var(--cond);font-size:16px;line-height:1.4;color:#08121F;margin-top:11px;
+    min-height:0;padding:0;background:transparent;border-radius:10px;transition:padding .12s}
+  .savemsg.on{background:var(--lime);padding:10px 13px;font-weight:700;
+    box-shadow:0 0 22px rgba(212,255,43,.28)}
 
   /* ---------- RANKING ---------- */
   .rankwrap{border-radius:16px;overflow:hidden;border:1px solid var(--line);
@@ -293,7 +296,7 @@
   <div class="savebox" id="saveBox">
     <div class="saveinfo" id="saveInfo"></div>
     <div class="savebtns">
-      <button class="b-go" id="shareBtn">Guardar y compartir</button>
+      <button class="b-go" id="shareBtn">Crear link y compartir</button>
       <button class="b-alt" id="copyBtn">Copiar código</button>
       <button class="b-alt" id="pasteBtn">Pegar código</button>
     </div>
@@ -374,6 +377,12 @@ const EDITIONS = [
 /* ARCHIVO PERMANENTE — viaja en el repo, se ve desde cualquier dispositivo.
    Acá se dejan las fechas ya jugadas para que no dependan de ningún celular. */
 const ARCHIVE = [
+  {key:"padelShowdown.2026-09-06", label:"Domingo 6 de septiembre",
+   teams:["Faco – Mario","Gordo – Sonru","Cristian – Negro","Lalo – Nano"],
+   matches:{ g1:{a:"3",b:"5",tb:null}, g2:{a:"5",b:"3",tb:null}, g3:{a:"1",b:"5",tb:null},
+             g4:{a:"2",b:"5",tb:null}, g5:{a:"1",b:"5",tb:null}, g6:{a:"5",b:"1",tb:null},
+             f1:{a:"3",b:"6",tb:null}, f2:{a:"6",b:"1",tb:null} }},
+
   {key:"padelShowdown.2026-08-30", label:"Domingo 30 de agosto",
    teams:["Fako – Cristian","Sonru – Nano","Lalo – Negro","Mario – Gordo"],
    summary:{
@@ -681,7 +690,11 @@ function importCode(raw){
   return null;
 }
 
-const saveMsg = t => { document.getElementById("saveMsg").textContent = t || ""; };
+const saveMsg = t => {
+  const el = document.getElementById("saveMsg");
+  el.textContent = t || "";
+  el.classList.toggle("on", !!t);
+};
 
 async function copiar(txt, ok){
   try{ await navigator.clipboard.writeText(txt); saveMsg(ok); return; }catch(e){}
@@ -697,18 +710,45 @@ function updateSave(){
   const completa = groupDone() && outcome("f1") && outcome("f2");
   box.classList.toggle("ready", !!completa);
   document.getElementById("saveInfo").innerHTML = completa
-    ? "<b>Fecha completa.</b> Tocá <b>Guardar y compartir</b> y mandala al grupo. Queda respaldada y cualquiera puede abrirla en su celular con <b>Pegar código</b>."
-    : "Cuando termine la fecha, guardala acá. El respaldo es un texto que podés mandar por WhatsApp: con eso los resultados dejan de vivir solo en este teléfono.";
+    ? "<b>Fecha completa.</b> Tocá <b>Crear link y compartir</b>: se arma un link que <b>lleva los resultados adentro</b>. Mandalo al grupo y a quien lo abra le aparece la fecha cargada, sin copiar nada."
+    : "Los resultados se guardan solos en este teléfono a medida que los cargás. Cuando termine la fecha, tocá <b>Crear link y compartir</b> para mandarla al grupo.";
+}
+
+/* El link lleva los resultados adentro: quien lo abre ve la fecha cargada,
+   sin copiar códigos ni depender de este teléfono. */
+function buildLink(){
+  return location.origin + location.pathname + "#d=" + encodeURIComponent(buildCode());
+}
+function mostrarLink(link){
+  const ta = document.getElementById("codeBox");
+  ta.style.display = "block"; ta.value = link;
+}
+function leerLink(){
+  const m = String(location.hash||"").match(/^#d=(.+)$/);
+  if(!m) return;
+  let err = null;
+  try{ err = importCode(decodeURIComponent(m[1])); }catch(e){ err = "El link venía cortado."; }
+  try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+  render(); renderRanking(); renderHistory();
+  saveMsg(err ? ("No se pudo leer el link: " + err)
+              : "✅ Resultados cargados desde el link y guardados en este teléfono.");
 }
 
 document.getElementById("shareBtn").onclick = async ()=>{
-  const txt = buildText();
+  const link = buildLink();
+  mostrarLink(link);
+  saveMsg("Link listo (está en el cuadro de abajo).");
+  const txt = buildText() + "\n\n👉 Abrilo acá:\n" + link;
   if(navigator.share){
-    try{ await navigator.share({title:"Pádel Showdown · " + LABEL, text:txt}); saveMsg("Listo, compartido."); }
-    catch(e){ if(!(e && e.name === "AbortError")) saveMsg("No se pudo compartir; usá 'Copiar código'."); }
-    return;
+    try{
+      await navigator.share({title:"Pádel Showdown · " + LABEL, text:txt});
+      saveMsg("✅ Compartido. El link lleva los resultados adentro.");
+      return;
+    }catch(e){
+      if(e && e.name === "AbortError"){ saveMsg("Cancelaste el compartir. El link quedó abajo, copialo a mano."); return; }
+    }
   }
-  await copiar(txt, "Resultados copiados. Pegalos donde quieras.");
+  await copiar(link, "✅ Link copiado. Pegalo en el grupo: quien lo abra ve la fecha cargada.");
 };
 document.getElementById("copyBtn").onclick = ()=> copiar(buildCode(), "Código copiado.");
 document.getElementById("pasteBtn").onclick = ()=>{
@@ -795,7 +835,7 @@ function renderHistory(){
   /* 1) Archivo del repo: es la copia verificada, manda sobre lo local.
         La fecha de hoy nunca se archiva todavía, así que se salta acá. */
   ARCHIVE.forEach(a=>{
-    if(a.key === KEY) return;
+    if(a.key === KEY && found.indexOf(KEY) >= 0) return;  /* si hay copia local, esa manda */
     seen[a.key] = 1;
     push(a.key, a.summary ? histCardSummary(a.label, a.summary)
                           : histCard(a.label, a.teams, a.matches));
@@ -905,7 +945,8 @@ function loop(){
   else { ctx.clearRect(0,0,cv.width,cv.height); raf = null; }
 }
 
-paint(); render(); renderRanking(); renderHistory();
+paint(); render(); renderRanking(); renderHistory(); leerLink();
+addEventListener("hashchange", leerLink);
 </script>
 </body>
 </html>
