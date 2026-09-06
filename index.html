@@ -194,6 +194,9 @@
   /* ---------- RANKING ---------- */
   .rankwrap{border-radius:16px;overflow:hidden;border:1px solid var(--line);
     background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
+  .ranknote{padding:11px 14px;background:#0A1120;border-top:1px solid rgba(255,255,255,.07);
+    font-size:12px;line-height:1.5;color:#8FA3BC}
+  .ranknote b{color:var(--lime)}
   .rankrules{display:flex;flex-wrap:wrap;gap:5px 14px;padding:12px 14px;background:#0A1120;
     border-bottom:1px solid var(--line);font-family:var(--cond);font-size:13px;
     letter-spacing:.4px;color:#8FA1B8}
@@ -222,6 +225,8 @@
   .hbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
     padding:12px 16px;background:#0A1120;border-bottom:1px solid var(--line)}
   .hdate{font-family:var(--head);font-size:14px;letter-spacing:2px;color:var(--cyan)}
+  .hhoy{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;
+    background:var(--lime);color:#08121F;font-size:10px;letter-spacing:1.5px;vertical-align:middle}
   .hchamp{font-family:var(--cond);font-size:18px;font-weight:700;text-transform:uppercase;
     letter-spacing:.5px;color:var(--gold)}
   .hist table td{padding:9px 4px;font-size:13.5px}
@@ -301,7 +306,7 @@
     <div class="savemsg" id="saveMsg"></div>
   </div>
 
-  <h2>Ranking personal <span>· acumulado 4 fechas</span></h2>
+  <h2>Ranking personal <span id="rankSub">· acumulado</span></h2>
   <div class="rankwrap">
     <div class="rankrules">
       <span><b>GF</b> juegos ganados &middot; <b>10 pts</b> c/u</span>
@@ -315,9 +320,10 @@
       </tr></thead>
       <tbody id="ranking"></tbody>
     </table>
+    <div class="ranknote" id="rankNote"></div>
   </div>
 
-  <h2>Fechas anteriores <span>· historial del torneo</span></h2>
+  <h2>Fechas jugadas <span>· historial del torneo</span></h2>
   <div id="history"></div>
 
   <h2>Reglamento</h2>
@@ -482,11 +488,19 @@ function render(){
   if(champ && champ !== lastChamp){ lastChamp = champ; blast(); }
   if(!champ) lastChamp = null;
   updateSave();
+  /* cada resultado que se guarda recalcula el ranking general y el resumen de abajo */
+  if(typeof renderRanking === "function") renderRanking();
+  if(typeof renderHistory === "function") renderHistory();
 }
 
 /* ---------- ranking personal acumulado ---------- */
-/* [nombre, fechas jugadas, GF fase regular, GF definicion, bonus por posiciones, puntos] */
-const RANKING = [
+/* BASE = totales ya verificados hasta el 30 de agosto (4 fechas).
+   De ahí en adelante el ranking se calcula solo con cada fecha nueva
+   que esté archivada en el repo o guardada en este navegador.
+   [nombre, fechas, GF fase regular, GF definicion, bonus, puntos] */
+const RANK_BASE_HASTA = "2026-08-30";
+const RANK_BASE_FECHAS = 4;
+const BASE_RANKING = [
   ["Lalo",         4, 44, 21, 160, 810],
   ["Faco / Fako",  3, 43, 15, 180, 760],
   ["Gordo",        4, 41, 18, 160, 750],
@@ -501,17 +515,110 @@ const RANKING = [
   ["Pancho",       1, 13,  6, 100, 290],
 ];
 
+const ALIAS = {faco:"Faco / Fako", fako:"Faco / Fako",
+               negro:"Negro / Niga", niga:"Negro / Niga", nigga:"Negro / Niga"};
+function canonNombre(n){
+  const s = String(n).trim();
+  const k = s.toLowerCase().replace(/[^a-záéíóúñ]/g,"");
+  if(ALIAS[k]) return ALIAS[k];
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function jugadoresDe(equipo){
+  return String(equipo).split(/\s*[–—\/]\s*|\s+-\s+/).map(x=>x.trim()).filter(Boolean);
+}
+function fechaDe(key){
+  const m = String(key).match(/(\d{4}-\d{2}-\d{2})$/);
+  return m ? m[1] : null;
+}
+
+/* GF regular, GF de definición y bonus de una fecha, por equipo (índice original) */
+function aporteDeFecha(teams, store){
+  if(!teams || teams.length !== 4 || !store) return null;
+  if(!IDS.some(id=>outcome(id, store))) return null;
+  const T = computeStandings(store, teams);
+  const reg = [0,0,0,0], def = [0,0,0,0], bonus = [0,0,0,0];
+  GROUP.forEach(m=>{
+    const o = outcome(m.id, store); if(!o) return;
+    reg[m.a] += o.ga; reg[m.b] += o.gb;
+  });
+  const orden = [T[0].i, T[1].i, T[2].i, T[3].i];
+  FINALS.forEach(f=>{
+    const o = outcome(f.id, store); if(!o) return;
+    const iA = T[f.posA].i, iB = T[f.posB].i;
+    def[iA] += o.ga; def[iB] += o.gb;
+    orden[f.posA] = o.win === "a" ? iA : iB;
+    orden[f.posB] = o.win === "a" ? iB : iA;
+  });
+  if(groupDone(store)){
+    const B = [100, 50, 30, 0];
+    orden.forEach((ti, pos)=>{ bonus[ti] = B[pos]; });
+  }
+  return {reg, def, bonus};
+}
+
+/* Fechas posteriores al corte: archivo del repo + lo guardado en este navegador */
+function fechasNuevas(){
+  const out = [], seen = {};
+  const add = (key, label, teams, store)=>{
+    if(seen[key] || !teams || !store) return;
+    const f = fechaDe(key);
+    if(!f || f <= RANK_BASE_HASTA) return;
+    seen[key] = 1; out.push({key, f, label, teams, store});
+  };
+  ARCHIVE.forEach(a=>{ if(a.matches) add(a.key, a.label, a.teams, a.matches); });
+  Object.keys(localStorage).filter(k=>k.indexOf("padelShowdown.") === 0).forEach(k=>{
+    let raw = null;
+    try{ raw = JSON.parse(localStorage.getItem(k)); }catch(e){}
+    if(!raw) return;
+    const store = raw.matches || raw;
+    if(!store || !Object.keys(store).length) return;
+    const ed = EDITIONS.filter(e=>e.key === k)[0] || {};
+    add(k, raw.label || ed.label || k, raw.teams || ed.teams, store);
+  });
+  return out.sort((a,b)=> a.f < b.f ? -1 : 1);
+}
+
+function calcRanking(){
+  const map = {}, ord = {};
+  BASE_RANKING.forEach((r,i)=>{
+    map[r[0]] = {n:r[0], f:r[1], reg:r[2], def:r[3], bon:r[4]};
+    ord[r[0]] = i;
+  });
+  const nuevas = fechasNuevas();
+  nuevas.forEach(d=>{
+    const c = aporteDeFecha(d.teams, d.store); if(!c) return;
+    d.teams.forEach((tn,i)=>{
+      jugadoresDe(tn).forEach(p=>{
+        const n = canonNombre(p);
+        const e = map[n] || (map[n] = {n, f:0, reg:0, def:0, bon:0});
+        if(ord[n] === undefined) ord[n] = 900 + Object.keys(ord).length;
+        e.f += 1; e.reg += c.reg[i]; e.def += c.def[i]; e.bon += c.bonus[i];
+      });
+    });
+  });
+  const arr = Object.keys(map).map(k=>map[k]);
+  arr.forEach(e=>{ e.gf = e.reg + e.def; e.pts = e.gf * 10 + e.bon; });
+  arr.sort((a,b)=> b.pts - a.pts || ord[a.n] - ord[b.n]);
+  return {arr, fechas: RANK_BASE_FECHAS + nuevas.filter(d=>aporteDeFecha(d.teams,d.store)).length};
+}
+
 function renderRanking(){
   const tb = document.getElementById("ranking"); if(!tb) return;
+  const {arr, fechas} = calcRanking();
   let pos = 0, prev = null;
-  tb.innerHTML = RANKING.map((r,i)=>{
-    const nom = r[0], fe = r[1], reg = r[2], def = r[3], bon = r[4], pts = r[5];
-    if(pts !== prev){ pos = i + 1; prev = pts; }
+  tb.innerHTML = arr.map((e,i)=>{
+    if(e.pts !== prev){ pos = i + 1; prev = e.pts; }
     return `<tr class="${pos<=3 ? "rp"+pos : ""}">
-      <td class="rpos">${pos}</td><td class="rname">${nom}</td><td>${fe}</td>
-      <td class="rhide">${reg}</td><td class="rhide">${def}</td><td>${reg+def}</td>
-      <td class="rbon">${bon}</td><td class="rpts">${pts}</td></tr>`;
+      <td class="rpos">${pos}</td><td class="rname">${e.n}</td><td>${e.f}</td>
+      <td class="rhide">${e.reg}</td><td class="rhide">${e.def}</td><td>${e.gf}</td>
+      <td class="rbon">${e.bon}</td><td class="rpts">${e.pts}</td></tr>`;
   }).join("");
+  const sub = document.getElementById("rankSub");
+  if(sub) sub.textContent = "· acumulado " + fechas + (fechas === 1 ? " fecha" : " fechas");
+  const note = document.getElementById("rankNote");
+  if(note) note.innerHTML = fechas > RANK_BASE_FECHAS
+    ? "Se recalcula solo con cada resultado que cargás. Las fechas nuevas viven en <b>este</b> teléfono: mandá el código con <b>Guardar y compartir</b> para que le sume a todos."
+    : "Se recalcula solo apenas cargues los resultados de la fecha.";
 }
 
 /* ---------- guardar / compartir / importar ---------- */
@@ -682,21 +789,21 @@ function renderHistory(){
   const el = document.getElementById("history");
   const known = {}; EDITIONS.forEach(e=>{ known[e.key] = e; });
   const found = Object.keys(localStorage).filter(k=>k.indexOf("padelShowdown.") === 0);
-  const seen = {}, blocks = [];
+  const seen = {}, items = [];
+  const push = (key, html)=>{ if(html) items.push({key, f: fechaDe(key) || "0000-00-00", html}); };
 
-  /* 1) Archivo del repo: se ve siempre, en cualquier dispositivo.
-        La fecha actual se omite acá si ya se está mostrando en vivo arriba. */
+  /* 1) Archivo del repo: es la copia verificada, manda sobre lo local.
+        La fecha de hoy nunca se archiva todavía, así que se salta acá. */
   ARCHIVE.forEach(a=>{
+    if(a.key === KEY) return;
     seen[a.key] = 1;
-    if(a.key === KEY && found.indexOf(KEY) >= 0) return;
-    const c = a.summary ? histCardSummary(a.label, a.summary)
-                        : histCard(a.label, a.teams, a.matches);
-    if(c) blocks.push(c);
+    push(a.key, a.summary ? histCardSummary(a.label, a.summary)
+                          : histCard(a.label, a.teams, a.matches));
   });
 
-  /* 2) Lo que tenga guardado este navegador y no esté archivado todavía. */
+  /* 2) Lo guardado en este navegador — incluida la fecha de hoy. */
   EDITIONS.map(e=>e.key).concat(found).forEach(k=>{
-    if(seen[k] || k === KEY || found.indexOf(k) < 0) return;
+    if(seen[k] || found.indexOf(k) < 0) return;
     seen[k] = 1;
     let raw = null;
     try{ raw = JSON.parse(localStorage.getItem(k)); }catch(e){}
@@ -705,11 +812,13 @@ function renderHistory(){
     if(!store || !Object.keys(store).length) return;
     const ed = known[k] || {label: raw.label || ("Fecha " + k.replace("padelShowdown.","")),
                             teams:["Equipo 1","Equipo 2","Equipo 3","Equipo 4"]};
-    const c = histCard(ed.label, raw.teams || ed.teams, store); if(c) blocks.push(c);
+    const lbl = ed.label + (k === KEY ? ' <span class="hhoy">hoy</span>' : "");
+    push(k, histCard(lbl, raw.teams || ed.teams, store));
   });
 
-  el.innerHTML = blocks.length ? blocks.join("") :
-    `<div class="hempty">Todavía no hay fechas anteriores para mostrar.</div>`;
+  items.sort((a,b)=> a.f < b.f ? 1 : a.f > b.f ? -1 : 0);
+  el.innerHTML = items.length ? items.map(i=>i.html).join("") :
+    `<div class="hempty">Todavía no hay fechas para mostrar.</div>`;
 }
 
 /* ---------- eventos ---------- */
