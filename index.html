@@ -203,6 +203,44 @@
   .savemsg.on{background:var(--lime);padding:10px 13px;font-weight:700;
     box-shadow:0 0 22px rgba(212,255,43,.28)}
 
+  /* ---------- SELECTOR DE FECHA Y ADMIN ---------- */
+  .selfecha{width:100%;margin-top:18px;padding:12px 14px;border-radius:12px;
+    border:1.5px solid var(--line);background:#0A101C;color:var(--txt);
+    font-family:var(--cond);font-size:17px;font-weight:700;letter-spacing:.5px}
+  .selfecha:focus{outline:none;border-color:var(--cyan)}
+  .aviso{display:flex;gap:10px;align-items:center;margin-top:12px;padding:11px 14px;
+    border-radius:12px;background:rgba(255,201,51,.09);border:1px solid rgba(255,201,51,.4);
+    font-family:var(--cond);font-size:15px;line-height:1.4;color:var(--gold)}
+  .aviso b{color:#FFE9A8}
+  .adminbox{border-radius:16px;padding:16px;border:1px solid var(--line);
+    background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
+  .ainp{flex:1;min-width:130px;padding:12px 13px;border-radius:11px;border:1.5px solid var(--line);
+    background:#0A101C;color:var(--txt);font-family:var(--cond);font-size:16px;font-weight:700}
+  .ainp:focus{outline:none;border-color:var(--cyan)}
+  .alab{display:block;font-family:var(--head);font-size:11px;letter-spacing:1.6px;
+    color:var(--cyan);margin:16px 0 7px;text-transform:uppercase}
+  .alab span{color:var(--muted);letter-spacing:.5px}
+  .atabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+  .atabs button{flex:0 0 auto;padding:9px 13px;font-size:13px;background:#1B2740;
+    color:#9FB2C9;border:1.5px solid transparent}
+  .atabs button.sel{background:linear-gradient(135deg,var(--cyan),#7CFFB2);color:#08121F}
+  .atabs .b-salir{margin-left:auto;background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{padding:9px 13px;border-radius:99px;border:1.5px solid var(--line);background:#0F1626;
+    color:#9FB2C9;font-family:var(--cond);font-size:15px;font-weight:700;cursor:pointer;
+    transition:transform .1s}
+  .chip:active{transform:scale(.94)}
+  .chip.on{background:linear-gradient(135deg,var(--lime),#8FF06B);color:#08120A;border-color:transparent}
+  .par{display:flex;align-items:center;gap:8px;margin-top:9px;padding:10px 12px;border-radius:12px;
+    background:#0A1120;border:1px solid var(--line)}
+  .par .n{font-family:var(--head);font-size:13px;color:var(--gold);width:18px;flex:0 0 auto}
+  .par select{flex:1;min-width:0;padding:9px 8px;border-radius:9px;border:1.5px solid var(--line);
+    background:#0F1626;color:var(--txt);font-family:var(--cond);font-size:15px;font-weight:700}
+  .par select:focus{outline:none;border-color:var(--cyan)}
+  .par .amp{color:var(--muted);font-family:var(--head);font-size:12px;flex:0 0 auto}
+  .parinfo{font-family:var(--cond);font-size:14px;line-height:1.6;color:#8FA1B8;margin-top:10px}
+  .parinfo b{color:var(--lime)}
+
   /* ---------- RANKING ---------- */
   .rankwrap{border-radius:16px;overflow:hidden;border:1px solid var(--line);
     background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
@@ -281,6 +319,11 @@
     </div>
   </div>
 
+  <select id="selFecha" class="selfecha" style="display:none"></select>
+  <div class="aviso" id="avisoVieja" style="display:none">
+    <span>🔒</span><span>Fecha cerrada. Para corregir un resultado entrá con el PIN en <b>Administración</b>.</span>
+  </div>
+
   <h2>Fase de grupos <span>· 20 min o 5 games · 4-4 define el quinto</span></h2>
   <div id="groupStage"></div>
 
@@ -339,6 +382,86 @@
   <h2>Fechas jugadas <span>· historial del torneo</span></h2>
   <div id="history"></div>
 
+  <h2>Administración <span>· crear fechas y parejas</span></h2>
+  <div class="adminbox" id="adminBox">
+    <div id="adminLock">
+      <div class="saveinfo">Acá se crea la fecha nueva, se arman las parejas y se corrigen
+        resultados viejos. Pide un PIN para que nadie toque los datos sin querer.</div>
+      <div class="savebtns">
+        <input type="password" id="pinInput" class="ainp" inputmode="numeric" placeholder="PIN">
+        <button class="b-go" id="pinBtn">Entrar</button>
+      </div>
+      <div class="savemsg" id="pinMsg"></div>
+    </div>
+
+    <div id="adminPanel" style="display:none">
+      <div class="atabs">
+        <button data-tab="nueva" class="sel">Nueva fecha</button>
+        <button data-tab="fechas">Fechas</button>
+        <button data-tab="jug">Jugadores</button>
+        <button data-tab="pin">PIN</button>
+        <button data-tab="salir" class="b-salir">Salir</button>
+      </div>
+
+      <div class="apane" id="tab-nueva">
+        <label class="alab">Día del cuadrangular</label>
+        <input type="date" id="nfFecha" class="ainp">
+        <label class="alab">Quiénes juegan <span id="nfCuenta">(0 de 8)</span></label>
+        <div class="chips" id="nfChips"></div>
+        <div class="savebtns" style="margin-top:8px">
+          <input type="text" id="nfNuevo" class="ainp" placeholder="Agregar un jugador nuevo">
+          <button class="b-alt" id="nfAddBtn">Agregar</button>
+        </div>
+        <div class="savebtns" style="margin-top:12px">
+          <button class="b-go" id="nfArmar">⚡ Armar parejas parejas</button>
+        </div>
+        <div id="nfParejas"></div>
+        <div class="savebtns" style="margin-top:12px">
+          <button class="b-go" id="nfCrear">Crear la fecha</button>
+        </div>
+        <div class="savemsg" id="nfMsg"></div>
+      </div>
+
+      <div class="apane" id="tab-fechas" style="display:none">
+        <label class="alab">Elegí la fecha</label>
+        <select id="efSel" class="ainp"></select>
+        <label class="alab">Nombre que se muestra</label>
+        <input type="text" id="efLabel" class="ainp">
+        <label class="alab">Parejas</label>
+        <div id="efParejas"></div>
+        <div class="savebtns" style="margin-top:12px">
+          <button class="b-go" id="efGuardar">Guardar cambios</button>
+          <button class="b-alt" id="efAbrir">Abrir para corregir</button>
+        </div>
+        <div class="savebtns" style="margin-top:8px">
+          <button class="b-ghost" id="efBorrar">Borrar esta fecha</button>
+        </div>
+        <div class="savemsg" id="efMsg"></div>
+      </div>
+
+      <div class="apane" id="tab-jug" style="display:none">
+        <label class="alab">Jugadores registrados</label>
+        <div class="chips" id="jgLista"></div>
+        <label class="alab">Unificar dos nombres de la misma persona</label>
+        <div class="savebtns">
+          <input type="text" id="jgDe" class="ainp" placeholder="Cómo aparece">
+          <input type="text" id="jgA" class="ainp" placeholder="Nombre bueno">
+          <button class="b-alt" id="jgUnir">Unir</button>
+        </div>
+        <div class="savemsg" id="jgMsg"></div>
+      </div>
+
+      <div class="apane" id="tab-pin" style="display:none">
+        <label class="alab">Cambiar el PIN</label>
+        <div class="savebtns">
+          <input type="password" id="pnNuevo" class="ainp" inputmode="numeric" placeholder="PIN nuevo">
+          <button class="b-alt" id="pnGuardar">Guardar</button>
+        </div>
+        <div class="savemsg" id="pnMsg"></div>
+      </div>
+    </div>
+  </div>
+
   <h2>Reglamento</h2>
   <div class="rules">
     <b>DURACIÓN</b> · 20 minutos o 5 games, lo que ocurra primero.<br>
@@ -352,7 +475,9 @@
 </div>
 
 <script>
-const TEAMS = ["Fako – Tuna","Lalo – Sonru","Gordo – Mario","Negro – Cristian"];
+/* La fecha activa, sus parejas y su nombre ya NO viven acá: salen de la base de
+   datos. Estos valores son solo el arranque, hasta que responda el servidor. */
+let TEAMS = ["Fako – Tuna","Lalo – Sonru","Gordo – Mario","Negro – Cristian"];
 
 const GROUP = [
   {id:"g1", slot:"9:00", court:"Cancha 1", a:0, b:2},
@@ -367,7 +492,7 @@ const FINALS = [
   {id:"f2", slot:"3ER PUESTO", court:"Cancha 2", posA:2, posB:3},
 ];
 
-const KEY = "padelShowdown.2026-09-27";
+let KEY = "padelShowdown.2026-09-27";
 
 /* Registro de fechas jugadas. Los resultados viejos se guardaron sin los nombres,
    así que los equipos de cada fecha quedan anotados acá. */
@@ -393,7 +518,7 @@ const EDITIONS = [
 const ARCHIVE = [
   {key:"padelShowdown.2026-09-13", label:"Domingo 13 de septiembre",
    teams:["Lalo – Mario","Negro – Nano","Fako – Sonru","Cristian – Gordo"],
-   matches:{ g1:{a:"1",b:"2",tb:null}, g2:{a:"2",b:"5",tb:null}, g3:{a:"3",b:"5",tb:null},
+   matches:{ g1:{a:"1",b:"5",tb:null}, g2:{a:"2",b:"5",tb:null}, g3:{a:"3",b:"5",tb:null},
              g4:{a:"5",b:"2",tb:null}, g5:{a:"0",b:"5",tb:null}, g6:{a:"2",b:"5",tb:null},
              f1:{a:"4",b:"6",tb:null}, f2:{a:"6",b:"4",tb:null} }},
 
@@ -433,10 +558,33 @@ const ARCHIVE = [
              f1:{a:"6",b:"3",tb:null}, f2:{a:"6",b:"2",tb:null} }},
 ];
 
-const LABEL = (EDITIONS.filter(e=>e.key===KEY)[0]||{}).label || KEY;
+let LABEL = (EDITIONS.filter(e=>e.key===KEY)[0]||{}).label || KEY;
 
 /* ---------- nube: los resultados se graban en el servidor solos ---------- */
 const DB = "https://padel-showdown-e6dae-default-rtdb.firebaseio.com/fechas";
+/* La configuración y los jugadores cuelgan de /fechas porque es la única rama
+   que las reglas del servidor dejan escribir. Empiezan con "_" para que el
+   resto del código las ignore como si no fueran fechas. */
+const K_CONF = "_config", K_JUG = "_jugadores";
+let CONF = {};            /* {pinHash, alias:{}} */
+let EXTRA = [];           /* jugadores agregados a mano que todavía no jugaron */
+let adminOK = false;
+
+async function nubeSet(path, data){
+  const r = await fetch(DB + "/" + path + ".json", {method:"PUT",
+    headers:{"Content-Type":"application/json"}, body: JSON.stringify(data)});
+  if(!r.ok) throw new Error("No se pudo guardar (" + r.status + ")");
+  return true;
+}
+async function nubeDel(path){
+  const r = await fetch(DB + "/" + path + ".json", {method:"DELETE"});
+  if(!r.ok) throw new Error("No se pudo borrar (" + r.status + ")");
+  return true;
+}
+async function sha256(txt){
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(txt));
+  return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
 const idNube  = k => String(k).replace(/\./g, "_");   /* Firebase no acepta puntos en las claves */
 const idLocal = k => String(k).replace(/_/g, ".");
 let CLOUD = {};
@@ -482,18 +630,63 @@ async function cargarNube(){
   try{
     const r = await fetch(DB + ".json?t=" + Date.now(), {cache:"no-store"});
     if(!r.ok) throw new Error(r.status);
-    CLOUD = (await r.json()) || {};
+    const bruto = (await r.json()) || {};
+    CONF  = bruto[K_CONF] || {};
+    EXTRA = bruto[K_JUG]  || [];
+    CLOUD = {};
+    Object.keys(bruto).forEach(k=>{ if(k.indexOf("_") !== 0) CLOUD[k] = bruto[k]; });
+    Object.keys(CONF.alias || {}).forEach(k=>{ ALIAS[k] = CONF.alias[k]; });
     estadoNube = "ok";
-    /* si el servidor tiene la fecha de hoy más completa que este teléfono, la adopta */
-    const v = CLOUD[idNube(KEY)];
-    if(v && v.matches && conResultados(v.matches) >= conResultados(S)){
-      S = v.matches;
-      try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){}
-    }
-    /* y si el servidor no la tiene todavía pero este teléfono sí, la sube */
-    if(!v && conResultados(S)) guardarNube();
+    activarFecha(fechaMasReciente());
+    return;
   }catch(e){ estadoNube = "sin"; }
-  render(); renderRanking(); renderHistory(); pintarNube();
+  render(); renderRanking(); renderHistory(); pintarNube(); pintarAdmin();
+}
+
+/* ---------- fecha activa ---------- */
+function listaFechas(){
+  const F = fuentes();
+  return Object.keys(F).map(k=>F[k])
+    .filter(d=>d.f !== "0000-00-00")
+    .sort((a,b)=> a.f < b.f ? 1 : a.f > b.f ? -1 : 0);
+}
+function fechaMasReciente(){
+  const L = listaFechas();
+  return L.length ? L[0].key : KEY;
+}
+/* Las fechas viejas quedan de solo lectura salvo que se entre con el PIN. */
+function editable(){
+  if(adminOK) return true;
+  if(!fuentes()[KEY]) return true;   /* fecha nueva, o servidor caído: no trabar la carga */
+  return KEY === fechaMasReciente();
+}
+
+function activarFecha(k){
+  const F = fuentes(), d = F[k];
+  if(d){
+    KEY   = d.key;
+    TEAMS = d.teams.slice();
+    LABEL = d.label;
+    S     = JSON.parse(JSON.stringify(d.store || {}));
+  }
+  lastChamp = null;
+  pintarCabecera();
+  render(); renderRanking(); renderHistory(); pintarNube(); pintarAdmin();
+}
+
+function pintarCabecera(){
+  document.title = "PÁDEL SHOWDOWN · Cuadrangular " +
+    String(LABEL).replace(/^Domingo\s+/i, "").replace(/^\w/, c=>c.toLowerCase());
+  const k = document.querySelector(".kick");
+  if(k) k.textContent = LABEL + " · 4 equipos · 8 partidos · 1 corona";
+  const sel = document.getElementById("selFecha");
+  if(sel){
+    const L = listaFechas();
+    sel.innerHTML = L.map(d=>`<option value="${d.key}"${d.key===KEY?" selected":""}>${d.label}</option>`).join("");
+    sel.style.display = L.length > 1 ? "block" : "none";
+  }
+  const av = document.getElementById("avisoVieja");
+  if(av) av.style.display = editable() ? "none" : "flex";
 }
 addEventListener("online", cargarNube);
 
@@ -542,7 +735,7 @@ function matchCard(m, nameA, nameB, isFinal){
   const nm = (n, side)=> n === null
     ? `<div class="tname pend">Por definir</div>`
     : `<div class="tname ${o ? (o.win===side?"win":"lose") : ""}">${n}</div>`;
-  const dis = pend ? "disabled" : "";
+  const dis = (pend || !editable()) ? "disabled" : "";
   return `<div class="${cls}" data-id="${m.id}">
     <div class="mhead"><span class="slot">${m.slot}</span><span class="court">${m.court}</span></div>
     <div class="row">${nm(nameA,"a")}<input type="number" inputmode="numeric" min="0" max="9" value="${r.a}" data-f="a" ${dis}></div>
@@ -653,9 +846,10 @@ function aporteDeFecha(teams, store){
 function fuentes(){
   const out = {};
   const poner = (key, label, teams, store, origen)=>{
-    if(!key || out[key] || !teams || teams.length !== 4) return;
-    if(!store || !Object.keys(store).length) return;
-    out[key] = {key, f: fechaDe(key) || "0000-00-00", label: label || key, teams, store, origen};
+    /* se aceptan fechas sin resultados todavía: son las recién creadas */
+    if(!key || key.indexOf("_") === 0 || out[key] || !teams || teams.length !== 4) return;
+    out[key] = {key, f: fechaDe(key) || "0000-00-00", label: label || key,
+                teams, store: store || {}, origen};
   };
   Object.keys(CLOUD).forEach(id=>{
     const v = CLOUD[id] || {}, k = idLocal(id);
@@ -936,6 +1130,299 @@ function renderHistory(){
     `<div class="hempty">Todavía no hay fechas para mostrar.</div>`;
 }
 
+/* ================= ADMINISTRACIÓN ================= */
+const nombreCorto = n => String(n).split(" / ")[0].trim();
+
+function listaJugadores(){
+  const set = {};
+  const F = fuentes();
+  Object.keys(F).forEach(k=> F[k].teams.forEach(t=>
+    jugadoresDe(t).forEach(p=>{ set[canonNombre(p)] = 1; })));
+  BASE_RANKING.forEach(r=>{ set[r[0]] = 1; });
+  (EXTRA || []).forEach(n=>{ set[canonNombre(n)] = 1; });
+  return Object.keys(set).sort((a,b)=>a.localeCompare(b,"es"));
+}
+
+/* Fuerza de cada jugador = puntos por fecha, pero corregida: al que jugó pocas
+   fechas se lo acerca al promedio, porque una sola tarde con suerte no prueba
+   nada. Con muchas fechas jugadas la corrección deja de pesar. */
+const PESO_BASE = 2;
+function fuerzas(){
+  const {arr} = calcRanking(), crudo = {}, m = {};
+  arr.forEach(e=>{ if(e.f > 0) crudo[e.n] = e.pts / e.f; });
+  const v = Object.keys(crudo).map(k=>crudo[k]);
+  const prom = v.length ? v.reduce((a,b)=>a+b,0)/v.length : 200;
+  arr.forEach(e=>{ if(e.f > 0) m[e.n] = (e.pts + prom*PESO_BASE) / (e.f + PESO_BASE); });
+  return {m, prom};
+}
+
+/* Compañeros de las últimas fechas. Repetir con alguien de hace meses no molesta;
+   repetir con el de la semana pasada sí. */
+const FECHAS_MEMORIA = 4;
+function vecesJuntos(){
+  const c = {};
+  listaFechas().slice(0, FECHAS_MEMORIA).forEach(d=> d.teams.forEach(t=>{
+    const p = jugadoresDe(t).map(canonNombre);
+    if(p.length === 2){ const id = p.slice().sort().join("|"); c[id] = (c[id]||0) + 1; }
+  }));
+  return c;
+}
+
+/* Prueba las 105 formas de partir 8 jugadores en 4 parejas y elige la mejor:
+   primero evita repetir compañeros, después minimiza la diferencia de fuerza. */
+function armarParejas(nombres){
+  if(!nombres || nombres.length !== 8) return null;
+  const F = fuerzas(), J = vecesJuntos(), fz = {};
+  nombres.forEach(n=>{ const c = canonNombre(n); fz[n] = (F.m[c] !== undefined) ? F.m[c] : F.prom; });
+  const rep = (a,b)=> J[[canonNombre(a),canonNombre(b)].sort().join("|")] || 0;
+  let mejor = null;
+  (function partir(resto, acc){
+    if(!resto.length){
+      const f = acc.map(p=>fz[p[0]] + fz[p[1]]);
+      const rango = Math.max.apply(null,f) - Math.min.apply(null,f);
+      const reps  = acc.reduce((s,p)=>s + rep(p[0],p[1]), 0);
+      /* repetir compañero "cuesta" 80 puntos de desequilibrio: se evita, pero no
+         a costa de armar una pareja regalada */
+      const score = reps*80 + rango;
+      if(!mejor || score < mejor.score)
+        mejor = {score, rango, reps, fuerzas:f.slice(), parejas: acc.map(p=>p.slice())};
+      return;
+    }
+    const a = resto[0];
+    for(let i=1;i<resto.length;i++){
+      const b = resto[i];
+      acc.push([a,b]);
+      partir(resto.filter((_,j)=> j !== 0 && j !== i), acc);
+      acc.pop();
+    }
+  })(nombres.slice(), []);
+  return mejor;
+}
+
+/* ---------- estado del panel ---------- */
+let nfSel = [], nfPar = null;
+const $ = id => document.getElementById(id);
+const msg = (id,t)=>{ const e = $(id); if(e){ e.textContent = t || ""; e.classList.toggle("on", !!t); } };
+
+function pintarAdmin(){
+  if(!$("adminBox")) return;
+  $("adminLock").style.display  = adminOK ? "none" : "block";
+  $("adminPanel").style.display = adminOK ? "block" : "none";
+  if(!adminOK) return;
+  pintarChips(); pintarParejasNuevas(); pintarFechasAdmin(); pintarJugadores();
+}
+
+function pintarChips(){
+  const c = $("nfChips"); if(!c) return;
+  const L = listaJugadores();
+  c.innerHTML = L.map(n=>`<button class="chip${nfSel.indexOf(n)>=0?" on":""}" data-j="${n}">${n}</button>`).join("");
+  $("nfCuenta").textContent = "(" + nfSel.length + " de 8)";
+}
+
+function pintarParejasNuevas(){
+  const c = $("nfParejas"); if(!c) return;
+  if(!nfPar){ c.innerHTML = ""; return; }
+  const opts = nfSel.map(n=>nombreCorto(n));
+  c.innerHTML = nfPar.parejas.map((p,i)=>`
+    <div class="par" data-p="${i}">
+      <span class="n">${i+1}</span>
+      ${[0,1].map(j=>`<select data-j="${j}">${opts.map(o=>
+        `<option${o===nombreCorto(p[j])?" selected":""}>${o}</option>`).join("")}</select>`).join('<span class="amp">–</span>')}
+    </div>`).join("") +
+    `<div class="parinfo">Diferencia entre la pareja más fuerte y la más débil:
+      <b>${Math.round(nfPar.rango)} puntos</b>${nfPar.reps ? ` · repite ${nfPar.reps} pareja(s) ya jugada(s)` : " · ninguna pareja repetida"}.
+      Podés cambiarlas a mano en las listas.</div>`;
+}
+
+function parejasDesdeUI(cont){
+  const out = [];
+  cont.querySelectorAll(".par").forEach(d=>{
+    const s = d.querySelectorAll("select");
+    out.push(s[0].value + " – " + s[1].value);
+  });
+  return out;
+}
+function validarParejas(ts){
+  if(ts.length !== 4) return "Faltan parejas.";
+  const todos = [];
+  ts.forEach(t=>jugadoresDe(t).forEach(p=>todos.push(canonNombre(p))));
+  if(todos.length !== 8) return "Cada pareja tiene que tener dos jugadores.";
+  const u = {}; let dup = null;
+  todos.forEach(n=>{ if(u[n]) dup = n; u[n] = 1; });
+  if(dup) return dup + " está repetido en dos parejas.";
+  return null;
+}
+
+function pintarFechasAdmin(){
+  const s = $("efSel"); if(!s) return;
+  const L = listaFechas();
+  const prev = s.value;
+  s.innerHTML = L.map(d=>`<option value="${d.key}">${d.label}</option>`).join("");
+  if(prev && L.some(d=>d.key===prev)) s.value = prev;
+  cargarFechaEnEditor();
+}
+function cargarFechaEnEditor(){
+  const s = $("efSel"); if(!s || !s.value) return;
+  const d = fuentes()[s.value]; if(!d) return;
+  $("efLabel").value = d.label;
+  const todos = listaJugadores().map(nombreCorto);
+  $("efParejas").innerHTML = d.teams.map((t,i)=>{
+    const p = jugadoresDe(t);
+    const op = n => todos.concat(todos.indexOf(n)<0 ? [n] : [])
+      .map(o=>`<option${o===n?" selected":""}>${o}</option>`).join("");
+    return `<div class="par" data-p="${i}"><span class="n">${i+1}</span>
+      <select data-j="0">${op(p[0]||"")}</select><span class="amp">–</span>
+      <select data-j="1">${op(p[1]||"")}</select></div>`;
+  }).join("");
+}
+
+function pintarJugadores(){
+  const c = $("jgLista"); if(!c) return;
+  c.innerHTML = listaJugadores().map(n=>`<span class="chip">${n}</span>`).join("");
+}
+
+/* ---------- handlers ---------- */
+document.addEventListener("click", async e=>{
+  const chip = e.target.closest("#nfChips .chip");
+  if(chip){
+    const n = chip.dataset.j, i = nfSel.indexOf(n);
+    if(i >= 0) nfSel.splice(i,1);
+    else if(nfSel.length < 8) nfSel.push(n);
+    else { msg("nfMsg","Ya hay 8 jugadores. Sacá a alguno primero."); return; }
+    msg("nfMsg",""); nfPar = null; pintarChips(); pintarParejasNuevas(); return;
+  }
+  const tab = e.target.closest(".atabs button");
+  if(tab){
+    if(tab.dataset.tab === "salir"){ adminOK = false; pintarAdmin(); pintarCabecera(); render(); return; }
+    document.querySelectorAll(".atabs button").forEach(b=>b.classList.toggle("sel", b === tab));
+    ["nueva","fechas","jug","pin"].forEach(t=>{
+      const p = $("tab-" + t); if(p) p.style.display = (t === tab.dataset.tab) ? "block" : "none";
+    });
+    return;
+  }
+});
+
+if($("pinBtn")) $("pinBtn").onclick = async ()=>{
+  const v = ($("pinInput").value || "").trim();
+  if(!v){ msg("pinMsg","Escribí el PIN."); return; }
+  if(!CONF.pinHash){
+    try{
+      CONF.pinHash = await sha256(v);
+      await nubeSet(K_CONF, CONF);
+      adminOK = true; $("pinInput").value = "";
+      msg("pinMsg","PIN creado. Anotalo, es el que va a pedir de ahora en más.");
+      pintarAdmin();
+    }catch(err){ msg("pinMsg", err.message); }
+    return;
+  }
+  if(await sha256(v) === CONF.pinHash){
+    adminOK = true; $("pinInput").value = ""; msg("pinMsg","");
+    pintarAdmin(); pintarCabecera(); render();
+  } else msg("pinMsg","PIN incorrecto.");
+};
+
+if($("nfAddBtn")) $("nfAddBtn").onclick = async ()=>{
+  const n = ($("nfNuevo").value || "").trim();
+  if(!n){ return; }
+  if(listaJugadores().indexOf(canonNombre(n)) >= 0){ msg("nfMsg","Ese jugador ya está en la lista."); return; }
+  EXTRA.push(n);
+  try{ await nubeSet(K_JUG, EXTRA); msg("nfMsg","Jugador agregado."); }
+  catch(err){ msg("nfMsg", err.message); }
+  $("nfNuevo").value = ""; pintarChips(); pintarJugadores();
+};
+
+if($("nfArmar")) $("nfArmar").onclick = ()=>{
+  if(nfSel.length !== 8){ msg("nfMsg","Marcá exactamente 8 jugadores (llevás " + nfSel.length + ")."); return; }
+  nfPar = armarParejas(nfSel);
+  msg("nfMsg",""); pintarParejasNuevas();
+};
+
+if($("nfCrear")) $("nfCrear").onclick = async ()=>{
+  const f = $("nfFecha").value;
+  if(!f){ msg("nfMsg","Elegí el día."); return; }
+  if(!nfPar){ msg("nfMsg","Armá las parejas primero."); return; }
+  const teams = parejasDesdeUI($("nfParejas"));
+  const err = validarParejas(teams);
+  if(err){ msg("nfMsg", err); return; }
+  const key = "padelShowdown." + f;
+  if(fuentes()[key]){ msg("nfMsg","Esa fecha ya existe."); return; }
+  const dias = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio",
+                 "agosto","septiembre","octubre","noviembre","diciembre"];
+  const d = new Date(f + "T12:00:00");
+  const label = dias[d.getDay()].replace(/^\w/,c=>c.toUpperCase()) + " " + d.getDate() + " de " + meses[d.getMonth()];
+  try{
+    await nubeSet(idNube(key), {label, teams, matches:{}});
+    CLOUD[idNube(key)] = {label, teams, matches:{}};
+    nfSel = []; nfPar = null; $("nfFecha").value = "";
+    msg("nfMsg","Fecha creada. Ya es la fecha activa arriba.");
+    activarFecha(key);
+  }catch(e2){ msg("nfMsg", e2.message); }
+};
+
+if($("efSel")) $("efSel").onchange = ()=>{ msg("efMsg",""); cargarFechaEnEditor(); };
+
+if($("efGuardar")) $("efGuardar").onclick = async ()=>{
+  const key = $("efSel").value; if(!key) return;
+  const teams = parejasDesdeUI($("efParejas"));
+  const err = validarParejas(teams);
+  if(err){ msg("efMsg", err); return; }
+  const label = ($("efLabel").value || "").trim() || key;
+  const d = fuentes()[key];
+  try{
+    await nubeSet(idNube(key), {label, teams, matches: d.store || {}});
+    CLOUD[idNube(key)] = {label, teams, matches: d.store || {}};
+    msg("efMsg","Guardado.");
+    if(key === KEY) activarFecha(key); else { pintarFechasAdmin(); renderRanking(); renderHistory(); }
+  }catch(e2){ msg("efMsg", e2.message); }
+};
+
+if($("efAbrir")) $("efAbrir").onclick = ()=>{
+  const key = $("efSel").value; if(!key) return;
+  activarFecha(key);
+  msg("efMsg","Abierta arriba. Corregí los resultados y se guardan solos.");
+  window.scrollTo({top:0, behavior:"smooth"});
+};
+
+if($("efBorrar")) $("efBorrar").onclick = async ()=>{
+  const key = $("efSel").value; if(!key) return;
+  const d = fuentes()[key];
+  if(!confirm("¿Borrar \"" + d.label + "\"? Se pierden sus resultados y el ranking se recalcula.")) return;
+  try{
+    await nubeDel(idNube(key));
+    delete CLOUD[idNube(key)];
+    try{ localStorage.removeItem(key); }catch(e3){}
+    msg("efMsg","Fecha borrada.");
+    activarFecha(fechaMasReciente());
+  }catch(e2){ msg("efMsg", e2.message); }
+};
+
+if($("jgUnir")) $("jgUnir").onclick = async ()=>{
+  const de = ($("jgDe").value || "").trim(), a = ($("jgA").value || "").trim();
+  if(!de || !a){ msg("jgMsg","Completá los dos campos."); return; }
+  CONF.alias = CONF.alias || {};
+  CONF.alias[de.toLowerCase().replace(/[^a-záéíóúñ]/g,"")] = a;
+  ALIAS[de.toLowerCase().replace(/[^a-záéíóúñ]/g,"")] = a;
+  try{
+    await nubeSet(K_CONF, CONF);
+    $("jgDe").value = ""; $("jgA").value = "";
+    msg("jgMsg","Listo: \"" + de + "\" ahora suma como \"" + a + "\".");
+    renderRanking(); pintarJugadores(); pintarChips();
+  }catch(e2){ msg("jgMsg", e2.message); }
+};
+
+if($("pnGuardar")) $("pnGuardar").onclick = async ()=>{
+  const v = ($("pnNuevo").value || "").trim();
+  if(v.length < 3){ msg("pnMsg","Poné al menos 3 caracteres."); return; }
+  try{
+    CONF.pinHash = await sha256(v);
+    await nubeSet(K_CONF, CONF);
+    $("pnNuevo").value = ""; msg("pnMsg","PIN actualizado.");
+  }catch(e2){ msg("pnMsg", e2.message); }
+};
+
+if($("selFecha")) $("selFecha").onchange = e=> activarFecha(e.target.value);
+
 /* ---------- eventos ---------- */
 document.addEventListener("input", e=>{
   const inp = e.target.closest("input[data-f]"); if(!inp) return;
@@ -1020,7 +1507,7 @@ function loop(){
   else { ctx.clearRect(0,0,cv.width,cv.height); raf = null; }
 }
 
-paint(); render(); renderRanking(); renderHistory(); leerLink();
+paint(); pintarCabecera(); render(); renderRanking(); renderHistory(); leerLink();
 addEventListener("hashchange", leerLink);
 cargarNube();
 </script>
