@@ -1143,25 +1143,48 @@ function listaJugadores(){
   return Object.keys(set).sort((a,b)=>a.localeCompare(b,"es"));
 }
 
-/* Fuerza de cada jugador = puntos por fecha, pero corregida: al que jugó pocas
-   fechas se lo acerca al promedio, porque una sola tarde con suerte no prueba
-   nada. Con muchas fechas jugadas la corrección deja de pesar. */
-const PESO_BASE = 2;
+/* APORTE INDIVIDUAL — esto NO es el ranking de puntos, que sigue igual.
+   Es solo para armar parejas parejas. Los puntos de una fecha son del equipo,
+   así que repartirlos por igual entre los dos miembros infla al que jugó poco
+   con un buen compañero. Acá se estima cuánto puso cada uno descontando lo que
+   ya se sabe que aporta su compañero, y se repite hasta que los números cuadran.
+   Al que tiene pocas fechas se lo acerca al jugador promedio. */
+const PESO_BASE = 3;
 function fuerzas(){
-  const {arr} = calcRanking(), crudo = {}, m = {};
-  arr.forEach(e=>{ if(e.f > 0) crudo[e.n] = e.pts / e.f; });
-  const v = Object.keys(crudo).map(k=>crudo[k]);
-  const prom = v.length ? v.reduce((a,b)=>a+b,0)/v.length : 200;
-  arr.forEach(e=>{ if(e.f > 0) m[e.n] = (e.pts + prom*PESO_BASE) / (e.f + PESO_BASE); });
-  return {m, prom};
+  const obs = [], F = fuentes();
+  Object.keys(F).forEach(k=>{
+    const d = F[k], c = aporteDeFecha(d.teams, d.store); if(!c) return;
+    d.teams.forEach((t,i)=>{
+      const p = jugadoresDe(t).map(canonNombre);
+      if(p.length === 2) obs.push({p, y: (c.reg[i] + c.def[i]) * 10 + c.bonus[i]});
+    });
+  });
+  if(!obs.length) return {m:{}, prom:100};
+  const base = obs.reduce((s,o)=>s + o.y, 0) / obs.length / 2;
+  const nombres = Object.keys(obs.reduce((h,o)=>{ o.p.forEach(p=>h[p]=1); return h; }, {}));
+  let r = {}; nombres.forEach(p=>{ r[p] = base; });
+  for(let it = 0; it < 120; it++){
+    const nx = {};
+    nombres.forEach(p=>{
+      let s = 0, c = 0;
+      obs.forEach(o=>{
+        if(o.p[0] === p){ s += o.y - r[o.p[1]]; c++; }
+        else if(o.p[1] === p){ s += o.y - r[o.p[0]]; c++; }
+      });
+      nx[p] = (s + base * PESO_BASE) / (c + PESO_BASE);
+    });
+    r = nx;
+  }
+  return {m:r, prom:base};
 }
 
 /* Compañeros de las últimas fechas. Repetir con alguien de hace meses no molesta;
-   repetir con el de la semana pasada sí. */
+   repetir con el de la semana pasada sí. Se puede excluir una fecha: la que se
+   está rearmando, para que sus propias parejas no cuenten como repetidas. */
 const FECHAS_MEMORIA = 4;
-function vecesJuntos(){
+function vecesJuntos(excluir){
   const c = {};
-  listaFechas().slice(0, FECHAS_MEMORIA).forEach(d=> d.teams.forEach(t=>{
+  listaFechas().filter(d=>d.key !== excluir).slice(0, FECHAS_MEMORIA).forEach(d=> d.teams.forEach(t=>{
     const p = jugadoresDe(t).map(canonNombre);
     if(p.length === 2){ const id = p.slice().sort().join("|"); c[id] = (c[id]||0) + 1; }
   }));
@@ -1170,9 +1193,9 @@ function vecesJuntos(){
 
 /* Prueba las 105 formas de partir 8 jugadores en 4 parejas y elige la mejor:
    primero evita repetir compañeros, después minimiza la diferencia de fuerza. */
-function armarParejas(nombres){
+function armarParejas(nombres, excluir){
   if(!nombres || nombres.length !== 8) return null;
-  const F = fuerzas(), J = vecesJuntos(), fz = {};
+  const F = fuerzas(), J = vecesJuntos(excluir), fz = {};
   nombres.forEach(n=>{ const c = canonNombre(n); fz[n] = (F.m[c] !== undefined) ? F.m[c] : F.prom; });
   const rep = (a,b)=> J[[canonNombre(a),canonNombre(b)].sort().join("|")] || 0;
   let mejor = null;
@@ -1181,9 +1204,9 @@ function armarParejas(nombres){
       const f = acc.map(p=>fz[p[0]] + fz[p[1]]);
       const rango = Math.max.apply(null,f) - Math.min.apply(null,f);
       const reps  = acc.reduce((s,p)=>s + rep(p[0],p[1]), 0);
-      /* repetir compañero "cuesta" 80 puntos de desequilibrio: se evita, pero no
+      /* repetir compañero "cuesta" 40 puntos de desequilibrio: se evita, pero no
          a costa de armar una pareja regalada */
-      const score = reps*80 + rango;
+      const score = reps*40 + rango;
       if(!mejor || score < mejor.score)
         mejor = {score, rango, reps, fuerzas:f.slice(), parejas: acc.map(p=>p.slice())};
       return;
@@ -1333,7 +1356,8 @@ if($("nfAddBtn")) $("nfAddBtn").onclick = async ()=>{
 
 if($("nfArmar")) $("nfArmar").onclick = ()=>{
   if(nfSel.length !== 8){ msg("nfMsg","Marcá exactamente 8 jugadores (llevás " + nfSel.length + ")."); return; }
-  nfPar = armarParejas(nfSel);
+  const f = $("nfFecha").value;
+  nfPar = armarParejas(nfSel, f ? ("padelShowdown." + f) : null);
   msg("nfMsg",""); pintarParejasNuevas();
 };
 
