@@ -238,6 +238,15 @@
     background:#0F1626;color:var(--txt);font-family:var(--cond);font-size:15px;font-weight:700}
   .par select:focus{outline:none;border-color:var(--cyan)}
   .par .amp{color:var(--muted);font-family:var(--head);font-size:12px;flex:0 0 auto}
+  .jrow{display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:11px;
+    background:#0A1120;border:1px solid var(--line);margin-bottom:6px}
+  .jrow .jn{flex:1;font-family:var(--cond);font-size:17px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.4px;color:var(--txt)}
+  .jrow .jauto{font-family:var(--cond);font-size:13px;color:var(--muted);flex:0 0 auto}
+  .jrow .jniv{width:62px;flex:0 0 auto;padding:8px 6px;border-radius:9px;text-align:center;
+    border:1.5px solid var(--line);background:#0F1626;color:var(--lime);
+    font-family:var(--head);font-size:16px}
+  .jrow .jniv:focus{outline:none;border-color:var(--cyan)}
   .parinfo{font-family:var(--cond);font-size:14px;line-height:1.6;color:#8FA1B8;margin-top:10px}
   .parinfo b{color:var(--lime)}
 
@@ -440,8 +449,8 @@
       </div>
 
       <div class="apane" id="tab-jug" style="display:none">
-        <label class="alab">Jugadores registrados</label>
-        <div class="chips" id="jgLista"></div>
+        <label class="alab">Nivel de cada jugador <span>· 5 es el promedio · vacío = lo calcula solo</span></label>
+        <div id="jgLista"></div>
         <label class="alab">Unificar dos nombres de la misma persona</label>
         <div class="savebtns">
           <input type="text" id="jgDe" class="ainp" placeholder="Cómo aparece">
@@ -1161,11 +1170,14 @@ function fuerzas(){
   });
   if(!obs.length) return {m:{}, prom:100};
   const base = obs.reduce((s,o)=>s + o.y, 0) / obs.length / 2;
+  const fijo = {};   /* niveles puestos a mano: mandan sobre el cálculo */
+  Object.keys(CONF.nivel || {}).forEach(n=>{ fijo[n] = nivelAFuerza(CONF.nivel[n], base); });
   const nombres = Object.keys(obs.reduce((h,o)=>{ o.p.forEach(p=>h[p]=1); return h; }, {}));
-  let r = {}; nombres.forEach(p=>{ r[p] = base; });
+  let r = {}; nombres.forEach(p=>{ r[p] = (fijo[p] !== undefined) ? fijo[p] : base; });
   for(let it = 0; it < 120; it++){
     const nx = {};
     nombres.forEach(p=>{
+      if(fijo[p] !== undefined){ nx[p] = fijo[p]; return; }   /* queda clavado */
       let s = 0, c = 0;
       obs.forEach(o=>{
         if(o.p[0] === p){ s += o.y - r[o.p[1]]; c++; }
@@ -1175,8 +1187,13 @@ function fuerzas(){
     });
     r = nx;
   }
+  /* jugadores sin ninguna fecha: valen lo que diga su nivel manual, o el promedio */
+  Object.keys(fijo).forEach(p=>{ r[p] = fijo[p]; });
   return {m:r, prom:base};
 }
+/* nivel 1 a 10, donde 5 es un jugador promedio */
+function nivelAFuerza(n, base){ return base + (Number(n) - 5) * (base/5); }
+function fuerzaANivel(f, base){ return 5 + (f - base) / (base/5); }
 
 /* Compañeros de las últimas fechas. Repetir con alguien de hace meses no molesta;
    repetir con el de la semana pasada sí. Se puede excluir una fecha: la que se
@@ -1301,7 +1318,17 @@ function cargarFechaEnEditor(){
 
 function pintarJugadores(){
   const c = $("jgLista"); if(!c) return;
-  c.innerHTML = listaJugadores().map(n=>`<span class="chip">${n}</span>`).join("");
+  const F = fuerzas(), N = CONF.nivel || {};
+  c.innerHTML = listaJugadores().map(n=>{
+    const tiene = F.m[n] !== undefined && N[n] === undefined;
+    const auto = tiene ? fuerzaANivel(F.m[n], F.prom).toFixed(1) : null;
+    return `<div class="jrow">
+      <span class="jn">${n}</span>
+      <span class="jauto">${auto !== null ? "calculado " + auto : (N[n] !== undefined ? "a mano" : "sin datos")}</span>
+      <input type="number" min="1" max="10" step="0.5" class="jniv" data-j="${n}"
+             value="${N[n] !== undefined ? N[n] : ""}" placeholder="auto">
+    </div>`;
+  }).join("");
 }
 
 /* ---------- handlers ---------- */
@@ -1420,6 +1447,23 @@ if($("efBorrar")) $("efBorrar").onclick = async ()=>{
     activarFecha(fechaMasReciente());
   }catch(e2){ msg("efMsg", e2.message); }
 };
+
+document.addEventListener("change", async e=>{
+  const inp = e.target.closest(".jniv"); if(!inp) return;
+  const n = inp.dataset.j, v = inp.value.trim();
+  CONF.nivel = CONF.nivel || {};
+  if(v === "") delete CONF.nivel[n];
+  else {
+    const x = Number(v);
+    if(!(x >= 1 && x <= 10)){ msg("jgMsg","El nivel va de 1 a 10."); return; }
+    CONF.nivel[n] = x;
+  }
+  try{
+    await nubeSet(K_CONF, CONF);
+    msg("jgMsg", v === "" ? (n + ": vuelve al cálculo automático.") : (n + ": nivel " + v + " guardado."));
+    nfPar = null; pintarJugadores(); pintarParejasNuevas();
+  }catch(err){ msg("jgMsg", err.message); }
+});
 
 if($("jgUnir")) $("jgUnir").onclick = async ()=>{
   const de = ($("jgDe").value || "").trim(), a = ($("jgA").value || "").trim();
