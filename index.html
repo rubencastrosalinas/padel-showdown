@@ -2063,6 +2063,9 @@ const SECS = [
 
   /* ---- administración en una pantalla aparte, detrás del engranaje ---- */
   const wrap = document.getElementById("admWrap");
+  /* .wrap tiene z-index 1 y la foto z-index 2: adentro de .wrap el modal queda
+     pintado por debajo de la foto. Se cuelga del body y listo. */
+  if(wrap && wrap.parentElement !== document.body) document.body.appendChild(wrap);
   const admin = v =>{
     if(!wrap) return;
     cerrar();
