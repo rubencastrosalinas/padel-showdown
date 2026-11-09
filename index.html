@@ -59,7 +59,7 @@
      entra en la pantalla sin scrollear. Se toca y se abre entera. */
   @media(max-width:619px){
     .hero{cursor:pointer}
-    .hero img{height:104px;aspect-ratio:auto;object-position:center 38%;transition:height .22s}
+    .hero img{height:92px;aspect-ratio:auto;object-position:center 38%;transition:height .22s}
     .hero.abierta img{height:auto;aspect-ratio:4/3}
     .hero .tag{font-size:10px;letter-spacing:3px;bottom:5px}
     .hero .lupa{position:absolute;right:9px;top:9px;z-index:4;width:28px;height:28px;
@@ -69,12 +69,6 @@
     .hero.abierta .lupa{transform:rotate(180deg)}
     header{padding:10px 14px 14px}
     .sub{margin-top:5px}
-    /* todo un poco más compacto para que el primer partido entre en pantalla */
-    .timer{margin-top:12px;padding:12px 14px}
-    .quick a{width:64px}
-    .quick a .ic{width:44px;height:44px;font-size:19px;margin-bottom:4px}
-    .quick{padding:2px 0 6px}
-    .wrap > h2:first-of-type{margin-top:16px}
   }
 
   /* ---------- HEADER ---------- */
@@ -451,6 +445,16 @@
   footer{text-align:center;margin-top:26px}
   #confetti{position:fixed;inset:0;pointer-events:none;z-index:99}
   @media(max-width:400px){.tname{font-size:19px} td.team{font-size:17px} .row{grid-template-columns:1fr 58px}}
+  /* modo cancha: va al final para que gane sobre las reglas de arriba.
+     Achica lo de arriba de todo así el primer partido queda a la vista. */
+  @media(max-width:619px){
+    .timer{margin-top:12px;padding:12px 14px}
+    #clock{font-size:clamp(42px,13vw,64px)}
+    .quick{padding:2px 0 6px;margin-bottom:0}
+    .quick a{width:64px}
+    .quick a .ic{width:44px;height:44px;font-size:19px;margin-bottom:4px}
+    .wrap > h2:first-of-type{margin-top:16px}
+  }
 </style>
 </head>
 <body>
