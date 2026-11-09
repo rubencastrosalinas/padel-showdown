@@ -70,6 +70,45 @@
        margin-top:8px;text-transform:uppercase}
   .sub b{color:var(--lime)}
 
+  /* ---------- MENÚ ---------- */
+  html{scroll-behavior:smooth}
+  #nav{position:fixed;top:0;left:0;right:0;z-index:95;background:rgba(7,13,26,.88);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  #nav .bar{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:11px;padding:8px 14px}
+  #navBtn{width:38px;height:34px;border-radius:10px;border:1px solid var(--line);background:#0E1726;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    cursor:pointer;padding:0;flex:0 0 auto}
+  #navBtn i{display:block;width:17px;height:2px;background:var(--cyan);border-radius:2px;transition:.18s}
+  #navBtn.on i:nth-child(1){transform:translateY(6px) rotate(45deg)}
+  #navBtn.on i:nth-child(2){opacity:0}
+  #navBtn.on i:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+  #nav .ttl{font-family:var(--cond);font-size:17px;font-weight:700;text-transform:uppercase;
+    letter-spacing:1.4px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #navMenu{display:none;border-top:1px solid var(--line);max-height:72vh;overflow:auto}
+  #navMenu.on{display:block}
+  #navMenu .in{max-width:1100px;margin:0 auto;padding:10px 14px 14px;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+  #navMenu a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;
+    background:#0C1524;border:1px solid var(--line);text-decoration:none;color:var(--txt);
+    font-family:var(--cond);font-size:16px}
+  #navMenu a .ic{width:30px;height:30px;border-radius:9px;background:#111E33;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;font-size:15px}
+  #navMenu a:active{border-color:var(--cyan)}
+  /* miniaturas de acceso directo */
+  .quick{display:flex;gap:9px;overflow-x:auto;padding:4px 0 8px;margin:0 0 4px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .quick::-webkit-scrollbar{display:none}
+  .quick a{flex:0 0 auto;width:70px;text-decoration:none;text-align:center}
+  .quick a .ic{width:50px;height:50px;margin:0 auto 5px;border-radius:15px;
+    background:linear-gradient(150deg,var(--card),var(--card2));border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:21px;
+    box-shadow:0 10px 20px -16px #000}
+  .quick a span{display:block;font-family:var(--cond);font-size:11px;letter-spacing:.3px;
+    color:var(--muted);line-height:1.2}
+  .quick a:active .ic{border-color:var(--cyan)}
+  body{padding-top:51px}
+  h2[id]{scroll-margin-top:64px}
+
   h2{font-family:var(--head);font-size:16px;letter-spacing:2.5px;text-transform:uppercase;
      margin:30px 0 12px;display:flex;align-items:center;gap:10px;color:var(--txt)}
   h2::before{content:"";width:5px;height:20px;border-radius:2px;
@@ -364,6 +403,16 @@
 <body>
 <canvas id="confetti"></canvas>
 
+<nav id="nav">
+  <div class="bar">
+    <button id="navBtn" aria-label="Abrir el menú de secciones" aria-expanded="false">
+      <i></i><i></i><i></i>
+    </button>
+    <div class="ttl">Pádel Showdown</div>
+  </div>
+  <div id="navMenu"><div class="in"></div></div>
+</nav>
+
 <div class="hero">
   <img src="equipo.webp" width="1000" height="750"
        alt="Los jugadores del cuadrangular posando en la cancha con las medallas"
@@ -387,15 +436,17 @@
     </div>
   </div>
 
+  <div class="quick" id="quick"></div>
+
   <select id="selFecha" class="selfecha" style="display:none"></select>
   <div class="aviso" id="avisoVieja" style="display:none">
     <span>🔒</span><span>Fecha cerrada. Para corregir un resultado entrá con el PIN en <b>Administración</b>.</span>
   </div>
 
-  <h2>Fase de grupos <span>· 20 min o 5 games · 4-4 define el quinto</span></h2>
+  <h2 id="secGrupos">Fase de grupos <span>· 20 min o 5 games · 4-4 define el quinto</span></h2>
   <div id="groupStage"></div>
 
-  <h2>Tabla <span>· en vivo</span></h2>
+  <h2 id="secTabla">Tabla <span>· en vivo</span></h2>
   <div class="tablewrap">
     <table>
       <thead><tr>
@@ -406,13 +457,13 @@
     </table>
   </div>
 
-  <h2>Definición <span>· 10:00 – 10:20</span></h2>
+  <h2 id="secFinales">Definición <span>· 10:00 – 10:20</span></h2>
   <div id="finals"></div>
 
-  <h2>Podio</h2>
+  <h2 id="secPodio">Podio</h2>
   <div class="podium" id="podium"></div>
 
-  <h2>Guardar la fecha <span>· para que no se pierda</span></h2>
+  <h2 id="secGuardar">Guardar la fecha <span>· para que no se pierda</span></h2>
   <div class="savebox" id="saveBox">
     <div class="cloud" id="cloudBox">Conectando…</div>
     <div class="saveinfo" id="saveInfo"></div>
@@ -430,7 +481,7 @@
     <div class="savemsg" id="saveMsg"></div>
   </div>
 
-  <h2>Ranking personal <span id="rankSub">· acumulado</span></h2>
+  <h2 id="secRanking">Ranking personal <span id="rankSub">· acumulado</span></h2>
   <div class="rankwrap">
     <div class="rankrules">
       <span><b>GF</b> juegos ganados &middot; <b>10 pts</b> c/u</span>
@@ -519,16 +570,16 @@
     </div>
   </div>
 
-  <h2>Fichas <span>· quién es quién</span></h2>
+  <h2 id="secFichas">Fichas <span>· quién es quién</span></h2>
   <div class="ranknote" style="margin:0 0 12px">Cada ficha se arma sola con los resultados
     cargados: fechas jugadas, títulos, con quién rinde mejor y su mejor domingo. Si cambian
     los resultados, cambian las fichas.</div>
   <div id="fichas"></div>
 
-  <h2>Fechas jugadas <span>· historial del torneo</span></h2>
+  <h2 id="secHistorial">Fechas jugadas <span>· historial del torneo</span></h2>
   <div id="history"></div>
 
-  <h2>Administración <span>· crear fechas y parejas</span></h2>
+  <h2 id="secAdmin">Administración <span>· crear fechas y parejas</span></h2>
   <div class="adminbox" id="adminBox">
     <div id="adminLock">
       <div class="saveinfo">Acá se crea la fecha nueva, se arman las parejas y se corrigen
@@ -608,7 +659,7 @@
     </div>
   </div>
 
-  <h2>Reglamento</h2>
+  <h2 id="secReglas">Reglamento</h2>
   <div class="rules">
     <b>DURACIÓN</b> · 20 minutos o 5 games, lo que ocurra primero.<br>
     <b>4-4</b> · se juega el quinto game y lo gana quien se lo lleve. No hace falta diferencia de 2.<br>
@@ -1865,6 +1916,43 @@ function loop(){
   if(parts.length) raf = requestAnimationFrame(loop);
   else { ctx.clearRect(0,0,cv.width,cv.height); raf = null; }
 }
+
+/* ---------- menú de secciones ---------- */
+/* [id del h2, ícono, texto del menú, texto corto de la miniatura] */
+const SECS = [
+  ["secGrupos",    "🎾", "Fase de grupos",   "Grupos"],
+  ["secTabla",     "📊", "Tabla en vivo",    "Tabla"],
+  ["secFinales",   "🏁", "Definición",       "Definición"],
+  ["secPodio",     "🏆", "Podio",            "Podio"],
+  ["secGuardar",   "💾", "Guardar la fecha", "Guardar"],
+  ["secRanking",   "📈", "Ranking personal", "Ranking"],
+  ["secFichas",    "🧑", "Fichas",           "Fichas"],
+  ["secHistorial", "📅", "Fechas jugadas",   "Historial"],
+  ["secAdmin",     "⚙️", "Administración",   "Admin"],
+  ["secReglas",    "📋", "Reglamento",       "Reglas"]
+];
+(function(){
+  const menu = document.querySelector("#navMenu .in"), quick = document.getElementById("quick");
+  if(menu) menu.innerHTML = SECS.map(s=>
+    `<a href="#${s[0]}"><span class="ic">${s[1]}</span>${s[2]}</a>`).join("");
+  if(quick) quick.innerHTML = SECS.map(s=>
+    `<a href="#${s[0]}"><span class="ic">${s[1]}</span><span>${s[3]}</span></a>`).join("");
+  const btn = document.getElementById("navBtn"), pan = document.getElementById("navMenu");
+  if(!btn || !pan) return;
+  const cerrar = ()=>{
+    pan.classList.remove("on"); btn.classList.remove("on");
+    btn.setAttribute("aria-expanded", "false");
+  };
+  btn.addEventListener("click", e=>{
+    e.stopPropagation();
+    const abierto = pan.classList.toggle("on");
+    btn.classList.toggle("on", abierto);
+    btn.setAttribute("aria-expanded", abierto ? "true" : "false");
+  });
+  pan.addEventListener("click", e=>{ if(e.target.closest("a")) cerrar(); });
+  document.addEventListener("click", e=>{ if(!e.target.closest("#nav")) cerrar(); });
+  addEventListener("keydown", e=>{ if(e.key === "Escape") cerrar(); });
+})();
 
 paint(); pintarCabecera(); render(); renderRanking(); renderHistory(); leerLink();
 addEventListener("hashchange", leerLink);
