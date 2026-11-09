@@ -54,7 +54,22 @@
   .hero .tag{position:absolute;left:0;right:0;bottom:8px;z-index:3;text-align:center;
     font-family:var(--cond);font-size:11px;letter-spacing:4px;text-transform:uppercase;
     color:#9FC2DC;line-height:1.4;padding:0 14px;text-shadow:0 2px 10px #000}
-  @media(min-width:620px){ .hero img{aspect-ratio:16/9;object-position:center 28%} }
+  @media(min-width:620px){ .hero img{aspect-ratio:16/9;object-position:center 28%} .hero .lupa{display:none} }
+  /* modo cancha: en el teléfono la foto arranca chica, así el primer partido
+     entra en la pantalla sin scrollear. Se toca y se abre entera. */
+  @media(max-width:619px){
+    .hero{cursor:pointer}
+    .hero img{height:104px;aspect-ratio:auto;object-position:center 38%;transition:height .22s}
+    .hero.abierta img{height:auto;aspect-ratio:4/3}
+    .hero .tag{font-size:10px;letter-spacing:3px;bottom:5px}
+    .hero .lupa{position:absolute;right:9px;top:9px;z-index:4;width:28px;height:28px;
+      border-radius:50%;background:rgba(7,13,26,.78);border:1px solid var(--line);color:#9FC2DC;
+      display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;
+      transition:transform .22s}
+    .hero.abierta .lupa{transform:rotate(180deg)}
+    header{padding:10px 14px 14px}
+    .sub{margin-top:5px}
+  }
 
   /* ---------- HEADER ---------- */
   header{position:relative;z-index:2;text-align:center;padding:14px 14px 20px;
@@ -82,8 +97,40 @@
   #navBtn.on i:nth-child(1){transform:translateY(6px) rotate(45deg)}
   #navBtn.on i:nth-child(2){opacity:0}
   #navBtn.on i:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
-  #nav .ttl{font-family:var(--cond);font-size:17px;font-weight:700;text-transform:uppercase;
-    letter-spacing:1.4px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #nav .ttl{flex:1;min-width:0;font-family:var(--cond);font-size:17px;font-weight:700;
+    text-transform:uppercase;letter-spacing:1.4px;color:var(--txt);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #nav .est{flex:0 0 auto;font-family:var(--cond);font-size:11px;letter-spacing:1.2px;
+    text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid var(--line);
+    color:var(--muted);white-space:nowrap}
+  #nav .est.vivo{color:#09101D;background:var(--lime);border-color:var(--lime);font-weight:700}
+  #nav .est.fin{color:var(--gold);border-color:rgba(255,196,0,.42)}
+  #nav .nube{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--muted)}
+  #nav .nube.ok{background:var(--lime);box-shadow:0 0 8px rgba(212,255,43,.75)}
+  #nav .nube.busy{background:var(--cyan);animation:pulsito 1s infinite}
+  #nav .nube.bad{background:#FF5A6E}
+  @keyframes pulsito{50%{opacity:.22}}
+  #navAdm{flex:0 0 auto;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+    background:#0E1726;color:var(--muted);font-size:15px;cursor:pointer;padding:0;line-height:1}
+  #navAdm:active{border-color:var(--cyan);color:var(--cyan)}
+  @media(max-width:430px){ #nav .ttl{font-size:14px;letter-spacing:.6px} #nav .bar{gap:8px} }
+  /* modal de administración */
+  #admWrap{position:fixed;inset:0;z-index:130;display:none;overflow:auto;
+    background:rgba(4,8,16,.95);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    padding:56px 14px 44px}
+  #admWrap.on{display:block}
+  #admWrap > h2,#admWrap > .adminbox{max-width:720px;margin-left:auto;margin-right:auto}
+  #admWrap > h2{margin-top:0}
+  #admCerrar{position:fixed;top:10px;right:12px;z-index:131;width:38px;height:38px;
+    border-radius:50%;border:1px solid var(--line);background:#0E1726;color:var(--txt);
+    font-size:16px;cursor:pointer;line-height:1}
+  body.admon{overflow:hidden}
+  /* secciones plegadas */
+  .mas{display:block;width:100%;padding:13px;border-radius:13px;border:1px dashed var(--line);
+    background:#0B1322;color:var(--cyan);font-family:var(--cond);font-size:16px;
+    letter-spacing:.6px;cursor:pointer;margin-top:10px}
+  .mas:active{border-color:var(--cyan);border-style:solid}
+  .plegado{display:none}
   #navMenu{display:none;border-top:1px solid var(--line);max-height:72vh;overflow:auto}
   #navMenu.on{display:block}
   #navMenu .in{max-width:1100px;margin:0 auto;padding:10px 14px 14px;display:grid;
@@ -409,14 +456,18 @@
       <i></i><i></i><i></i>
     </button>
     <div class="ttl">Pádel Showdown</div>
+    <span class="est" id="navEstado"></span>
+    <span class="nube" id="navNube" title="Estado del guardado"></span>
+    <button id="navAdm" aria-label="Administración" title="Administración">⚙</button>
   </div>
   <div id="navMenu"><div class="in"></div></div>
 </nav>
 
-<div class="hero">
+<div class="hero" id="hero" title="Tocá para ver la foto entera">
   <img src="equipo.webp" width="1000" height="750"
        alt="Los jugadores del cuadrangular posando en la cancha con las medallas"
        onerror="this.closest('.hero').style.display='none'">
+  <div class="lupa">▾</div>
   <div class="tag">La banda · cuadrangular de los domingos</div>
 </div>
 
@@ -463,7 +514,7 @@
   <h2 id="secPodio">Podio</h2>
   <div class="podium" id="podium"></div>
 
-  <h2 id="secGuardar">Guardar la fecha <span>· para que no se pierda</span></h2>
+  <h2 id="secGuardar">Compartir la fecha <span>· link y código de respaldo</span></h2>
   <div class="savebox" id="saveBox">
     <div class="cloud" id="cloudBox">Conectando…</div>
     <div class="saveinfo" id="saveInfo"></div>
@@ -574,11 +625,15 @@
   <div class="ranknote" style="margin:0 0 12px">Cada ficha se arma sola con los resultados
     cargados: fechas jugadas, títulos, con quién rinde mejor y su mejor domingo. Si cambian
     los resultados, cambian las fichas.</div>
-  <div id="fichas"></div>
+  <button class="mas" id="masFichas" data-t="fichas"
+          data-mas="Ver las fichas" data-menos="Ocultar las fichas">Ver las fichas</button>
+  <div id="fichas" class="plegado"></div>
 
   <h2 id="secHistorial">Fechas jugadas <span>· historial del torneo</span></h2>
   <div id="history"></div>
 
+  <div id="admWrap">
+  <button id="admCerrar" aria-label="Cerrar administración">✕</button>
   <h2 id="secAdmin">Administración <span>· crear fechas y parejas</span></h2>
   <div class="adminbox" id="adminBox">
     <div id="adminLock">
@@ -657,6 +712,7 @@
         <div class="savemsg" id="pnMsg"></div>
       </div>
     </div>
+  </div>
   </div>
 
   <h2 id="secReglas">Reglamento</h2>
@@ -793,16 +849,34 @@ const conResultados = o => Object.keys(o || {})
   .filter(i => o[i] && o[i].a !== "" && o[i].b !== "").length;
 
 function pintarNube(){
-  const el = document.getElementById("cloudBox"); if(!el) return;
   const M = {
-    cargando: ["busy", "Conectando con el servidor…"],
-    guardando:["busy", "Guardando en el servidor…"],
-    ok:       ["ok",   "Guardado en el servidor · lo ve todo el mundo"],
+    cargando: ["busy", "Conectando…"],
+    guardando:["busy", "Guardando…"],
+    ok:       ["ok",   "Guardado en la nube ✓ · lo ve todo el mundo"],
     sin:      ["bad",  "Sin conexión — guardado en este teléfono. Se sube solo cuando vuelva internet."]
   };
   const [c, t] = M[estadoNube] || M.cargando;
-  el.className = "cloud " + c;
-  el.innerHTML = '<span class="dot"></span><span>' + t + "</span>";
+  const el = document.getElementById("cloudBox");
+  if(el){
+    el.className = "cloud " + c;
+    el.innerHTML = '<span class="dot"></span><span>' + t + "</span>";
+  }
+  /* el mismo estado, resumido en un puntito arriba */
+  const n = document.getElementById("navNube");
+  if(n){ n.className = "nube " + c; n.title = t; }
+  pintarEstado();
+}
+
+/* En juego / Completa / Cerrada — arriba, siempre a la vista */
+function pintarEstado(){
+  const el = document.getElementById("navEstado"); if(!el) return;
+  const hechos = conResultados(S);
+  let t = "En juego", c = "vivo";
+  if(typeof editable === "function" && !editable()){ t = "Cerrada"; c = "fin"; }
+  else if(hechos >= 8){ t = "Completa"; c = "fin"; }
+  else if(!hechos){ t = "Por jugar"; c = ""; }
+  el.textContent = t;
+  el.className = "est " + c;
 }
 
 let tGuardar = null;
@@ -975,6 +1049,7 @@ function render(){
   if(typeof renderRanking === "function") renderRanking();
   if(typeof renderFichas === "function") renderFichas();
   if(typeof renderHistory === "function") renderHistory();
+  if(typeof pintarEstado === "function") pintarEstado();
 }
 
 /* ---------- ranking personal acumulado ---------- */
@@ -1257,6 +1332,12 @@ function renderFichas(){
       <div class="frase">“${FRASES[e.n] || "Cada domingo es una hoja en blanco. La historia se escribe jugando."}”</div>
     </article>`;
   }).join("");
+  const b = document.getElementById("masFichas");
+  if(b){
+    b.dataset.mas = "Ver las fichas de los " + arr.length + " jugadores";
+    b.dataset.menos = "Ocultar las fichas";
+    b.textContent = box.classList.contains("plegado") ? b.dataset.mas : b.dataset.menos;
+  }
 }
 
 /* ---------- guardar / compartir / importar ---------- */
@@ -1468,8 +1549,22 @@ function renderHistory(){
   ARCHIVE.forEach(a=>{ if(a.summary && !F[a.key]) push(a.key, histCardSummary(a.label, a.summary)); });
 
   items.sort((a,b)=> a.f < b.f ? 1 : a.f > b.f ? -1 : 0);
-  el.innerHTML = items.length ? items.map(i=>i.html).join("") :
-    `<div class="hempty">Todavía no hay fechas para mostrar.</div>`;
+  if(!items.length){
+    el.innerHTML = `<div class="hempty">Todavía no hay fechas para mostrar.</div>`;
+    return;
+  }
+  /* se muestran las dos últimas; el resto queda plegado para no estirar la página */
+  const A_LA_VISTA = 2;
+  const vista = items.slice(0, A_LA_VISTA).map(i=>i.html).join("");
+  const resto = items.slice(A_LA_VISTA);
+  const abierto = (document.getElementById("histResto") || {classList:{contains:()=>true}})
+                    .classList.contains("plegado") === false;
+  el.innerHTML = vista + (resto.length ? `
+    <div id="histResto" class="${abierto ? "" : "plegado"}">${resto.map(i=>i.html).join("")}</div>
+    <button class="mas" data-t="histResto"
+      data-mas="Ver las otras ${resto.length} fechas"
+      data-menos="Ocultar las fechas viejas">${
+        abierto ? "Ocultar las fechas viejas" : "Ver las otras " + resto.length + " fechas"}</button>` : "");
 }
 
 /* ================= ADMINISTRACIÓN ================= */
@@ -1928,30 +2023,68 @@ const SECS = [
   ["secRanking",   "📈", "Ranking personal", "Ranking"],
   ["secFichas",    "🧑", "Fichas",           "Fichas"],
   ["secHistorial", "📅", "Fechas jugadas",   "Historial"],
-  ["secAdmin",     "⚙️", "Administración",   "Admin"],
+  ["ADM",          "⚙️", "Administración",   "Admin"],
   ["secReglas",    "📋", "Reglamento",       "Reglas"]
 ];
 (function(){
+  const adm  = s => s[0] === "ADM" ? ' href="#" data-adm="1"' : ' href="#' + s[0] + '"';
   const menu = document.querySelector("#navMenu .in"), quick = document.getElementById("quick");
   if(menu) menu.innerHTML = SECS.map(s=>
-    `<a href="#${s[0]}"><span class="ic">${s[1]}</span>${s[2]}</a>`).join("");
+    `<a${adm(s)}><span class="ic">${s[1]}</span>${s[2]}</a>`).join("");
   if(quick) quick.innerHTML = SECS.map(s=>
-    `<a href="#${s[0]}"><span class="ic">${s[1]}</span><span>${s[3]}</span></a>`).join("");
+    `<a${adm(s)}><span class="ic">${s[1]}</span><span>${s[3]}</span></a>`).join("");
+
   const btn = document.getElementById("navBtn"), pan = document.getElementById("navMenu");
-  if(!btn || !pan) return;
   const cerrar = ()=>{
+    if(!pan) return;
     pan.classList.remove("on"); btn.classList.remove("on");
     btn.setAttribute("aria-expanded", "false");
   };
-  btn.addEventListener("click", e=>{
-    e.stopPropagation();
-    const abierto = pan.classList.toggle("on");
-    btn.classList.toggle("on", abierto);
-    btn.setAttribute("aria-expanded", abierto ? "true" : "false");
+  if(btn && pan){
+    btn.addEventListener("click", e=>{
+      e.stopPropagation();
+      const abierto = pan.classList.toggle("on");
+      btn.classList.toggle("on", abierto);
+      btn.setAttribute("aria-expanded", abierto ? "true" : "false");
+    });
+    pan.addEventListener("click", e=>{ if(e.target.closest("a")) cerrar(); });
+    document.addEventListener("click", e=>{ if(!e.target.closest("#nav")) cerrar(); });
+  }
+
+  /* ---- administración en una pantalla aparte, detrás del engranaje ---- */
+  const wrap = document.getElementById("admWrap");
+  const admin = v =>{
+    if(!wrap) return;
+    cerrar();
+    wrap.classList.toggle("on", v);
+    document.body.classList.toggle("admon", v);
+    if(v){ wrap.scrollTop = 0; if(typeof pintarAdmin === "function") pintarAdmin(); }
+  };
+  const gear = document.getElementById("navAdm");
+  if(gear) gear.addEventListener("click", e=>{ e.stopPropagation(); admin(true); });
+  const x = document.getElementById("admCerrar");
+  if(x) x.addEventListener("click", ()=> admin(false));
+  document.addEventListener("click", e=>{
+    const a = e.target.closest("a[data-adm]"); if(!a) return;
+    e.preventDefault(); admin(true);
   });
-  pan.addEventListener("click", e=>{ if(e.target.closest("a")) cerrar(); });
-  document.addEventListener("click", e=>{ if(!e.target.closest("#nav")) cerrar(); });
-  addEventListener("keydown", e=>{ if(e.key === "Escape") cerrar(); });
+  addEventListener("keydown", e=>{
+    if(e.key !== "Escape") return;
+    cerrar();
+    if(wrap && wrap.classList.contains("on")) admin(false);
+  });
+
+  /* ---- secciones plegables ---- */
+  document.addEventListener("click", e=>{
+    const b = e.target.closest(".mas"); if(!b) return;
+    const t = document.getElementById(b.dataset.t); if(!t) return;
+    const abierto = !t.classList.toggle("plegado");
+    b.textContent = abierto ? b.dataset.menos : b.dataset.mas;
+  });
+
+  /* ---- la foto del grupo se abre al tocarla ---- */
+  const hero = document.getElementById("hero");
+  if(hero) hero.addEventListener("click", ()=> hero.classList.toggle("abierta"));
 })();
 
 paint(); pintarCabecera(); render(); renderRanking(); renderHistory(); leerLink();
