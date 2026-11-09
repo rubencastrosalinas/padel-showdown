@@ -303,6 +303,40 @@
   tr.rp3 .rpos{color:var(--bronze)} tr.rp3 td.rname{box-shadow:inset 4px 0 0 var(--bronze)}
   @media(max-width:540px){ .ranktable .rhide{display:none} .ranktable td.rname{font-size:16px} }
 
+  /* ---------- CARAS Y FICHAS ---------- */
+  .cara{display:inline-block;background-image:url(caras.webp);background-size:400% 400%;
+    background-repeat:no-repeat;border-radius:50%;vertical-align:middle;flex:0 0 auto;
+    border:1.5px solid var(--line)}
+  .cara.sin{background:#1B2740;color:#7E90A8;font-family:var(--head);text-align:center;
+    display:inline-flex;align-items:center;justify-content:center}
+  .ranktable td.rname .cara{margin-right:8px}
+  #fichas{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+  .ficha{border-radius:16px;overflow:hidden;border:1px solid var(--line);
+    background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
+  .ficha .cab{display:flex;align-items:center;gap:12px;padding:13px 14px;background:#0A1120;
+    border-bottom:1px solid var(--line)}
+  .ficha .cab .cara{width:62px;height:62px;border-width:2px}
+  .ficha .id{flex:1;min-width:0}
+  .ficha .nom{font-family:var(--cond);font-size:22px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.5px;color:var(--txt);line-height:1.1}
+  .ficha .pos{font-family:var(--head);font-size:10px;letter-spacing:1.1px;color:var(--muted);
+    margin-top:4px;white-space:nowrap}
+  .ficha .nums{display:flex;flex-wrap:wrap;gap:6px;padding:11px 14px 0}
+  .ficha .nums div{flex:1;min-width:52px;text-align:center;padding:7px 4px;border-radius:9px;
+    background:#0A1120;border:1px solid rgba(255,255,255,.05)}
+  .ficha .nums div.fz{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3)}
+  .ficha .nums div.fz b{color:var(--cyan)}
+  .ficha .nums b{display:block;font-family:var(--head);font-size:17px;color:var(--lime)}
+  .ficha .nums span{font-family:var(--cond);font-size:10px;letter-spacing:.8px;color:var(--muted);
+    text-transform:uppercase}
+  .ficha .txt{padding:11px 14px 0;font-family:var(--cond);font-size:15px;line-height:1.6;color:#9FB2C9}
+  .ficha .txt b{color:#D6E4F5}
+  .ficha .frase{margin:12px 14px 14px;padding:10px 12px;border-left:3px solid var(--lime);
+    background:rgba(212,255,43,.06);border-radius:0 10px 10px 0;
+    font-family:var(--cond);font-size:16px;font-style:italic;line-height:1.5;color:#DCEFA8}
+  .ficha .meds{padding:9px 14px 0;font-family:var(--cond);font-size:14px;color:var(--gold);
+    letter-spacing:.5px}
+
   /* ---------- HISTORIAL ---------- */
   .hist{border-radius:16px;overflow:hidden;border:1px solid var(--line);margin-bottom:12px;
     background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
@@ -484,6 +518,12 @@
       </details>
     </div>
   </div>
+
+  <h2>Fichas <span>· quién es quién</span></h2>
+  <div class="ranknote" style="margin:0 0 12px">Cada ficha se arma sola con los resultados
+    cargados: fechas jugadas, títulos, con quién rinde mejor y su mejor domingo. Si cambian
+    los resultados, cambian las fichas.</div>
+  <div id="fichas"></div>
 
   <h2>Fechas jugadas <span>· historial del torneo</span></h2>
   <div id="history"></div>
@@ -882,6 +922,7 @@ function render(){
   updateSave();
   /* cada resultado que se guarda recalcula el ranking general y el resumen de abajo */
   if(typeof renderRanking === "function") renderRanking();
+  if(typeof renderFichas === "function") renderFichas();
   if(typeof renderHistory === "function") renderHistory();
 }
 
@@ -1028,7 +1069,7 @@ function renderRanking(){
   tb.innerHTML = arr.map((e,i)=>{
     if(oficial){ if(e.pts !== prev){ pos = i + 1; prev = e.pts; } } else pos = i + 1;
     return `<tr class="${oficial && pos<=3 ? "rp"+pos : ""}">
-      <td class="rpos">${pos}</td><td class="rname">${e.n}</td><td>${e.f}</td>
+      <td class="rpos">${pos}</td><td class="rname">${caraHTML(e.n, 26)}${e.n}</td><td>${e.f}</td>
       <td class="rhide">${e.reg}</td><td class="rhide">${e.def}</td><td>${e.gf}</td>
       <td class="rbon">${e.bon}</td><td class="rpts">${e.pts}</td>
       <td class="rfz">${e.fz === null ? "–" : e.fz.toFixed(1)}</td></tr>`;
@@ -1039,6 +1080,129 @@ function renderRanking(){
   if(note) note.innerHTML = fechas > RANK_BASE_FECHAS
     ? "Se recalcula solo con cada resultado que cargás. Las fechas nuevas viven en <b>este</b> teléfono: mandá el código con <b>Guardar y compartir</b> para que le sume a todos."
     : "Se recalcula solo apenas cargues los resultados de la fecha.";
+}
+
+/* ---------- FICHAS: foto + perfil de cada jugador ---------- */
+/* Las caras viven en un solo archivo (caras.webp), una grilla de 4x4.
+   Acá guardamos en qué casilla está cada uno. Quien no tiene foto
+   queda con su inicial, no se inventa nada. */
+const CARAS = {
+  "Boris":0, "Cristian":1, "Faco / Fako":2, "Gordo":3,
+  "Hugo":4, "Lalo":5, "Mario":6, "Nano":7,
+  "Negro / Niga":8, "Pancho":9, "Sonru":10, "Tano":11,
+  "Tuna":12
+};
+function caraHTML(n, px){
+  const i = CARAS[n];
+  if(i === undefined)
+    return `<span class="cara sin" style="width:${px}px;height:${px}px;font-size:${Math.round(px*0.44)}px">${String(n).charAt(0).toUpperCase()}</span>`;
+  const x = (i % 4) * (100/3), y = Math.floor(i / 4) * (100/3);
+  return `<span class="cara" style="width:${px}px;height:${px}px;background-position:${x.toFixed(3)}% ${y.toFixed(3)}%"></span>`;
+}
+
+/* Detalle fecha por fecha de cada jugador, sacado de los resultados reales.
+   Nada de esto se escribe a mano: sale de las fechas cargadas. */
+function statsJugadores(){
+  const F = fuentes(), out = {};
+  const POS = {100:"oro", 50:"plata", 30:"bronce", 0:"cuarto"};
+  const get = n => out[n] || (out[n] = {n, dets:0, oro:0, plata:0, bronce:0, cuarto:0,
+                                       mejor:0, mejorCon:"", mejorLbl:"", duplas:{}});
+  Object.keys(F).map(k=>F[k]).filter(d=>d.f !== "0000-00-00")
+    .sort((a,b)=> a.f < b.f ? -1 : 1).forEach(d=>{
+      const c = aporteDeFecha(d.teams, d.store); if(!c) return;
+      const cerrada = groupDone(d.store) && outcome("f1", d.store) && outcome("f2", d.store);
+      d.teams.forEach((tn, i)=>{
+        const js = jugadoresDe(tn).map(canonNombre);
+        const pts = (c.reg[i] + c.def[i]) * 10 + c.bonus[i];
+        js.forEach((n, k)=>{
+          const e = get(n), comp = js.length === 2 ? js[1-k] : "";
+          e.dets++;
+          if(cerrada && POS[c.bonus[i]]) e[POS[c.bonus[i]]]++;
+          if(pts > e.mejor){ e.mejor = pts; e.mejorCon = comp || "—"; e.mejorLbl = d.label || d.key; }
+          if(comp){ const u = e.duplas[comp] || (e.duplas[comp] = {n:0, p:0}); u.n++; u.p += pts; }
+        });
+      });
+    });
+  return out;
+}
+
+/* El resumen inspiracional. Sin números adentro, así no se pone viejo. */
+const FRASES = {
+  "Lalo":         "El que no falta nunca termina arriba. Su mejor arma no es un golpe: es estar siempre.",
+  "Faco / Fako":  "Juega mejor cuando el partido pesa más. Ahí está la diferencia entre jugar bien y ganar.",
+  "Gordo":        "Llegó muchas veces a la puerta del título. La puerta se abre justo para los que siguen tocando.",
+  "Sonru":        "Gana más juegos que nadie en los grupos. Al que acumula así, el título se le termina cayendo encima.",
+  "Cristian":     "Sin ruido y sin show, siempre cerca. La constancia también es un estilo.",
+  "Boris":        "Aparece poco y gana mucho. Cuando se anota, el cuadro se le complica a todos.",
+  "Mario":        "Es el que más veces llega a los partidos que definen. Nadie que insista tanto se queda sin su domingo.",
+  "Hugo":         "Pocas fechas y ya sabe lo que es levantar la copa. El que arranca ganando aprende a esperarlo.",
+  "Tuna":         "Casi siempre termina en el podio. Eso no es suerte, es ubicación.",
+  "Negro / Niga": "Pelea cada juego como si valiera la final. Los puntos llegan para los que no regalan nada.",
+  "Nano":         "Todavía le debe al torneo su mejor versión, y el torneo lo está esperando.",
+  "Christofer":   "Campeón en su única fecha. Los mitos empiezan así.",
+  "Tano":         "Entró y ganó. Pocos pueden contar un debut de ese tamaño.",
+  "Pancho":       "Campeón en su debut. Lo difícil ahora es volver a hacerlo."
+};
+
+function textoFicha(e, s, fz){
+  const L = [], gf = e.gf || 0, pd = gf ? Math.round(e.def / gf * 100) : 0;
+  const prom = e.f ? Math.round(e.pts / e.f) : 0;
+
+  if(e.f >= 10)      L.push(`Pilar del torneo: <b>${e.f} fechas</b> jugadas, <b>${prom} puntos</b> de promedio por domingo.`);
+  else if(e.f >= 5)  L.push(`Habitué del domingo, con <b>${e.f} fechas</b> encima y <b>${prom} puntos</b> por fecha.`);
+  else if(e.f >= 2)  L.push(`Todavía construyendo historia: <b>${e.f} fechas</b>, <b>${prom} puntos</b> por fecha.`);
+  else               L.push(`Recién llegado al cuadro: <b>1 fecha</b> jugada, <b>${e.pts} puntos</b>.`);
+
+  if(gf){
+    if(pd >= 30)      L.push(`Jugador de instancias finales: <b>${pd}%</b> de sus juegos los ganó en semifinales y finales, bien por encima del resto.`);
+    else if(pd >= 22) L.push(`Reparte parejo: <b>${pd}%</b> de sus juegos los gana en la definición.`);
+    else              L.push(`Fuerte en la fase de grupos, donde saca <b>${100-pd}%</b> de sus juegos; en la definición todavía tiene margen.`);
+  }
+
+  const med = s.oro + s.plata + s.bronce;
+  if(s.oro >= 3)        L.push(`<b>${s.oro} títulos</b> en el bolsillo: de los que saben ganar la última.`);
+  else if(s.oro)        L.push(`Ya levantó la copa <b>${s.oro === 1 ? "una vez" : s.oro + " veces"}</b>.`);
+  if(s.plata >= 3)      L.push(`Y <b>${s.plata} finales perdidas</b>: la deuda más grande de su carrera.`);
+  else if(!s.oro && med) L.push(`Llegó al podio <b>${med === 1 ? "una vez" : med + " veces"}</b>, pero el título sigue pendiente.`);
+  if(s.cuarto >= 4)     L.push(`También sabe lo que es el fondo de la tabla (<b>${s.cuarto}</b> cuartos puestos) y vuelve igual el domingo siguiente.`);
+
+  const ds = Object.keys(s.duplas).map(k=>({c:k, n:s.duplas[k].n, pr:s.duplas[k].p / s.duplas[k].n}))
+                   .filter(x=>x.n >= 2).sort((a,b)=> b.pr - a.pr);
+  if(ds.length)   L.push(`Donde mejor rinde es al lado de <b>${ds[0].c}</b>: ${Math.round(ds[0].pr)} puntos de promedio en ${ds[0].n} fechas juntos.`);
+  if(s.mejor)     L.push(`Su mejor domingo fue <b>${s.mejorLbl}</b>, con <b>${s.mejor} puntos</b> jugando con ${s.mejorCon}.`);
+  if(fz !== null) L.push(`Hoy el cálculo de fuerza lo ubica en <b>${fz.toFixed(1)}</b> sobre 10, que es el número con el que el sorteo equilibra las parejas.`);
+  return L.join(" ");
+}
+
+function renderFichas(){
+  const box = document.getElementById("fichas"); if(!box) return;
+  const {arr} = calcRanking(), FZ = fuerzas(), ST = statsJugadores();
+  arr.sort((a,b)=> b.pts - a.pts || a.n.localeCompare(b.n, "es"));
+  const vacio = {dets:0, oro:0, plata:0, bronce:0, cuarto:0, mejor:0, mejorCon:"", mejorLbl:"", duplas:{}};
+  box.innerHTML = arr.map((e, i)=>{
+    const s = ST[e.n] || vacio;
+    const fz = FZ.m[e.n] !== undefined ? fuerzaANivel(FZ.m[e.n], FZ.prom) : null;
+    const meds = [s.oro && "🥇 ×" + s.oro, s.plata && "🥈 ×" + s.plata,
+                  s.bronce && "🥉 ×" + s.bronce].filter(Boolean).join("   ");
+    const gf = e.gf || 0, pd = gf ? Math.round(e.def / gf * 100) : 0;
+    return `<article class="ficha">
+      <div class="cab">
+        ${caraHTML(e.n, 62)}
+        <div class="id"><div class="nom">${e.n}</div>
+          <div class="pos">#${i+1} DEL RANKING GENERAL</div></div>
+      </div>
+      <div class="nums">
+        <div><b>${e.f}</b><span>Fechas</span></div>
+        <div><b>${e.pts}</b><span>Puntos</span></div>
+        <div><b>${gf}</b><span>Juegos</span></div>
+        <div><b>${pd}%</b><span>Definición</span></div>
+        <div class="fz"><b>${fz === null ? "–" : fz.toFixed(1)}</b><span>Fuerza</span></div>
+      </div>
+      ${meds ? `<div class="meds">${meds}</div>` : ""}
+      <div class="txt">${textoFicha(e, s, fz)}</div>
+      <div class="frase">“${FRASES[e.n] || "Cada domingo es una hoja en blanco. La historia se escribe jugando."}”</div>
+    </article>`;
+  }).join("");
 }
 
 /* ---------- guardar / compartir / importar ---------- */
@@ -1539,7 +1703,7 @@ if($("efGuardar")) $("efGuardar").onclick = async ()=>{
     await nubeSet(idNube(key), {label, teams, matches: d.store || {}});
     CLOUD[idNube(key)] = {label, teams, matches: d.store || {}};
     msg("efMsg","Guardado.");
-    if(key === KEY) activarFecha(key); else { pintarFechasAdmin(); renderRanking(); renderHistory(); }
+    if(key === KEY) activarFecha(key); else { pintarFechasAdmin(); renderRanking(); renderFichas(); renderHistory(); }
   }catch(e2){ msg("efMsg", e2.message); }
 };
 
@@ -1590,7 +1754,7 @@ if($("jgUnir")) $("jgUnir").onclick = async ()=>{
     await nubeSet(K_CONF, CONF);
     $("jgDe").value = ""; $("jgA").value = "";
     msg("jgMsg","Listo: \"" + de + "\" ahora suma como \"" + a + "\".");
-    renderRanking(); pintarJugadores(); pintarChips();
+    renderRanking(); renderFichas(); pintarJugadores(); pintarChips();
   }catch(e2){ msg("jgMsg", e2.message); }
 };
 
