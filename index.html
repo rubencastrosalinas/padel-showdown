@@ -1144,7 +1144,7 @@ const FRASES = {
   "Pancho":       "Campeón en su debut. Lo difícil ahora es volver a hacerlo."
 };
 
-function textoFicha(e, s, fz){
+function textoFicha(e, s, fz, pdProm){
   const L = [], gf = e.gf || 0, pd = gf ? Math.round(e.def / gf * 100) : 0;
   const prom = e.f ? Math.round(e.pts / e.f) : 0;
 
@@ -1154,9 +1154,9 @@ function textoFicha(e, s, fz){
   else               L.push(`Recién llegado al cuadro: <b>1 fecha</b> jugada, <b>${e.pts} puntos</b>.`);
 
   if(gf){
-    if(pd >= 30)      L.push(`Jugador de instancias finales: <b>${pd}%</b> de sus juegos los ganó en semifinales y finales, bien por encima del resto.`);
-    else if(pd >= 22) L.push(`Reparte parejo: <b>${pd}%</b> de sus juegos los gana en la definición.`);
-    else              L.push(`Fuerte en la fase de grupos, donde saca <b>${100-pd}%</b> de sus juegos; en la definición todavía tiene margen.`);
+    if(pd >= pdProm + 6)      L.push(`Jugador de instancias finales: <b>${pd}%</b> de sus juegos los ganó en semifinales y finales, contra un ${pdProm}% de promedio del torneo.`);
+    else if(pd <= pdProm - 6) L.push(`Su fuerte es la fase de grupos: sólo <b>${pd}%</b> de sus juegos llegan en la definición, cuando el promedio del torneo es ${pdProm}%.`);
+    else                      L.push(`Reparte parejo entre grupos y definición: <b>${pd}%</b> de sus juegos los gana en la definición, casi igual al ${pdProm}% del torneo.`);
   }
 
   const med = s.oro + s.plata + s.bronce;
@@ -1179,6 +1179,9 @@ function renderFichas(){
   const {arr} = calcRanking(), FZ = fuerzas(), ST = statsJugadores();
   arr.sort((a,b)=> b.pts - a.pts || a.n.localeCompare(b.n, "es"));
   const vacio = {dets:0, oro:0, plata:0, bronce:0, cuarto:0, mejor:0, mejorCon:"", mejorLbl:"", duplas:{}};
+  /* promedio del torneo, para no decir "por encima del resto" cuando no lo está */
+  const tGf = arr.reduce((x,e)=>x + (e.gf||0), 0), tDef = arr.reduce((x,e)=>x + e.def, 0);
+  const pdProm = tGf ? Math.round(tDef / tGf * 100) : 0;
   box.innerHTML = arr.map((e, i)=>{
     const s = ST[e.n] || vacio;
     const fz = FZ.m[e.n] !== undefined ? fuerzaANivel(FZ.m[e.n], FZ.prom) : null;
@@ -1199,7 +1202,7 @@ function renderFichas(){
         <div class="fz"><b>${fz === null ? "–" : fz.toFixed(1)}</b><span>Fuerza</span></div>
       </div>
       ${meds ? `<div class="meds">${meds}</div>` : ""}
-      <div class="txt">${textoFicha(e, s, fz)}</div>
+      <div class="txt">${textoFicha(e, s, fz, pdProm)}</div>
       <div class="frase">“${FRASES[e.n] || "Cada domingo es una hoja en blanco. La historia se escribe jugando."}”</div>
     </article>`;
   }).join("");
