@@ -269,6 +269,13 @@
   .leyenda summary{cursor:pointer;color:var(--lime);font-weight:700;letter-spacing:.3px;font-size:15px}
   .leyenda .expli p{margin:9px 0 0}
   .leyenda .expli b{color:#C4D3E7}
+  .leyenda .expli p.pso{margin-top:15px;color:var(--cyan);font-size:15px}
+  .leyenda .expli p.pso b{color:var(--cyan)}
+  .ejem{margin:14px 0 4px;padding:12px 14px;border-radius:12px;background:#0F1626;
+    border:1px solid rgba(0,229,255,.28);line-height:1.85}
+  .ejem .et{font-family:var(--head);font-size:10px;letter-spacing:1.6px;color:var(--cyan);
+    margin-bottom:6px}
+  .ejem b{color:var(--lime)}
   .rankwrap{border-radius:16px;overflow-x:auto;border:1px solid var(--line);
     background:linear-gradient(150deg,var(--card),var(--card2));box-shadow:0 14px 30px -20px #000}
   .ranknote{padding:11px 14px;background:#0A1120;border-top:1px solid rgba(255,255,255,.07);
@@ -422,18 +429,55 @@
       <div><b>Fuerza</b> · nivel estimado del 1 al 10, donde 5 es el jugador promedio.
         No suma para el ranking: sirve solo para armar parejas parejas.</div>
       <details class="expli">
-        <summary>¿Cómo se calcula la Fuerza?</summary>
-        <p>Los puntos de una fecha son <b>del equipo</b>, no de cada jugador: si tu pareja
-          hace 310, los dos se llevan 310. Eso infla a quien jugó poco y le tocó un buen
-          compañero, y castiga al que le tocaron parejas flojas.</p>
-        <p>La Fuerza corrige eso. Toma todas las fechas jugadas y busca los números que mejor
-          expliquen los resultados: si un equipo sacó 310 y ya se sabe que uno de los dos
-          aporta 120, al otro le atribuye 190. Después repite la cuenta una y otra vez, porque
-          al cambiar un jugador cambian todos los que jugaron con él, hasta que los números
-          dejan de moverse. Así el aporte de cada uno queda <b>descontado el de todos sus
-          compañeros</b>.</p>
-        <p>Al que tiene pocas fechas se lo acerca al promedio, porque una sola tarde con suerte
-          no prueba nada. Cuantas más fechas juega, más pesa lo suyo y menos esa corrección.</p>
+        <summary>¿Cómo se calcula la Fuerza? (explicado paso a paso)</summary>
+
+        <p><b>El problema que resuelve.</b> Los puntos de una fecha son <b>de la pareja</b>, no
+          de cada uno. Si tu equipo saca 280, los dos figuran con 280 — aunque haya ganado tu
+          compañero. Así, el que siempre juega con alguien bueno parece mejor de lo que es, y
+          al que le tocan parejas flojas se lo castiga sin culpa. La Fuerza corrige eso.</p>
+
+        <p class="pso"><b>Paso 1 · Todos arrancan en 100</b></p>
+        <p>100 es el jugador promedio. Es el punto de partida, después se va corrigiendo.</p>
+
+        <p class="pso"><b>Paso 2 · En cada fecha, se le resta el compañero</b></p>
+        <p>Si tu equipo hizo 280 puntos y tu compañero vale 120, entonces lo tuyo fueron
+          <b>280 − 120 = 160</b>. Eso es tu aporte de ese domingo.</p>
+
+        <p class="pso"><b>Paso 3 · Se promedian todas tus fechas</b></p>
+        <p>Se suma tu aporte de cada domingo y se divide por la cantidad de domingos.</p>
+
+        <p class="pso"><b>Paso 4 · Se repite todo, 120 veces</b></p>
+        <p>Acá está el truco. Al recalcularte a vos cambió tu número, y tu número es el que se
+          le resta a <b>todos los que jugaron con vos</b>. Así que las cuentas del paso 2
+          quedaron viejas y hay que rehacerlas. Se repite una y otra vez hasta que los números
+          dejan de moverse y quedan todos coherentes entre sí.</p>
+
+        <p class="pso"><b>Paso 5 · Al que jugó poco se lo acerca al promedio</b></p>
+        <p>Una sola tarde con suerte no prueba nada. Por eso a cada jugador se le suman
+          <b>3 fechas imaginarias valiendo 100</b>. Si jugaste 1 domingo, pesan 3 contra 1 y
+          quedás pegado al promedio. Si jugaste 12, apenas se notan.</p>
+
+        <p class="pso"><b>Paso 6 · Se pasa a la escala del 1 al 10</b></p>
+        <p>100 es nivel 5. Cada 20 puntos arriba o abajo es un nivel.</p>
+
+        <div class="ejem">
+          <div class="et">EJEMPLO COMPLETO</div>
+          <div>Un jugador con dos fechas:</div>
+          <div>· Domingo 1 — su equipo hizo <b>280</b>, el compañero vale <b>120</b> → aporte <b>160</b></div>
+          <div>· Domingo 2 — su equipo hizo <b>160</b>, el compañero vale <b>90</b> → aporte <b>70</b></div>
+          <div>Suma de aportes: 160 + 70 = <b>230</b> en <b>2</b> fechas</div>
+          <div>Con las 3 fechas imaginarias: (230 + 300) ÷ (2 + 3) = <b>106</b></div>
+          <div>Nivel: 5 + (106 − 100) ÷ 20 = <b>5,3</b></div>
+        </div>
+
+        <p><b>Qué significa en la práctica.</b> Si rendís bien incluso con compañeros flojos,
+          tu Fuerza sube. Si tu equipo rinde lo justo pero siempre te toca alguien fuerte,
+          baja: el sistema entiende que el mérito era del otro.</p>
+
+        <p><b>Por qué no coincide con los Puntos.</b> Los Puntos premian acumular: jugando
+          todos los domingos sumás aunque rindas poco. La Fuerza mide lo que aportás por
+          partido, sin importar cuántas fechas jugaste.</p>
+
         <p>Si alguien es nuevo, o el número no refleja lo que se ve en la cancha, se le puede
           fijar el nivel a mano en <b>Administración → Jugadores</b>. El cálculo lo respeta y
           acomoda al resto alrededor de ese valor.</p>
